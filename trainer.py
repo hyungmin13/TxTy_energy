@@ -40,7 +40,7 @@ class PINNbase:
         self.c=c
 
 class PINN(PINNbase):
-    def train(self):
+    def train(self,numb=0,**kwargs):
         all_params = {"domain":{}, "data":{}, "network":{}, "problem":{}}
         all_params["domain"] = self.c.domain.init_params(**self.c.domain_init_kwargs)
         all_params["data"] = self.c.data.init_params(**self.c.data_init_kwargs)
@@ -49,6 +49,7 @@ class PINN(PINNbase):
         all_params["network"] = self.c.network.init_params(**self.c.network_init_kwargs)
         all_params["problem"] = self.c.problem.init_params(**self.c.problem_init_kwargs)
         
+        model_params = model_params
         # Initialize optmiser
         learn_rate = optax.exponential_decay(self.c.optimization_init_kwargs["learning_rate"],
                                              self.c.optimization_init_kwargs["decay_step"],
@@ -67,7 +68,8 @@ class PINN(PINNbase):
         # Input data and grids
         grids, all_params = self.c.domain.sampler(all_params)
         train_data, all_params = self.c.data.train_data(all_params)
-        
+        model = Model(all_params['network']['layers'], model_fn)
+        all_params["network"]["layers"] = from_state_dict(model, model_params).params
         valid_data = self.c.problem.exact_solution(all_params.copy())
         #model_states = optimiser.init(all_params["network"]["layers"])
         #optimiser_fn = optimiser.update
@@ -129,8 +131,8 @@ class PINN(PINNbase):
             lossval, model_states, dynamic_params = update(model_states, dynamic_params, static_params, g_batch, p_batch, v_batch, b_batches, Tx_batch, Ty_batch)
         
         
-            self.report(i, report_fn, dynamic_params, all_params, p_batch, v_batch, g_batch, b_batch, Tx_batch, Ty_batch, valid_data, keys_iter[-1], self.c.optimization_init_kwargs["save_step"], model_fn)
-            self.save_model(i, dynamic_params, all_params, self.c.optimization_init_kwargs["save_step"], model_fn)
+            self.report(numb+i, report_fn, dynamic_params, all_params, p_batch, v_batch, g_batch, b_batch, Tx_batch, Ty_batch, valid_data, keys_iter[-1], self.c.optimization_init_kwargs["save_step"], model_fn)
+            self.save_model(numb+i, dynamic_params, all_params, self.c.optimization_init_kwargs["save_step"], model_fn)
 
     def save_model(self, i, dynamic_params, all_params, save_step, model_fns):
         model_save = (i % save_step == 0)
@@ -192,4 +194,16 @@ if __name__=="__main__":
     c = Constants(**data)
 
     run = PINN(c)
-    run.train()
+    if os.path.isfile(run.c.model_out_dir+'/*.pkl'):
+        print('continuing from last checkpoint')
+        checkpoint_list = sorted(glob(run.c.model_out_dir+'/*.pkl'), key=lambda x: int(x.split('_')[-1].split('.')[0]))
+        num_ext = lambda x: int(x.split('_')[-1].split('.')[0])
+        num = num_ext(checkpoint_list[-1]) + 1
+        with open(checkpoint_list[-1],"rb") as f:
+            model_params = pickle.load(f)
+        run.train(num, model_params)
+    else:
+        run.train()
+
+    
+    #run.train()
