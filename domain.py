@@ -75,7 +75,7 @@ class Domain(Domainbase):
         grids = {'eqns':{arg_keys[j]:[] for j in range(len(arg_keys))}}
         grids['eqns']['t'] = t
         for i in range(len(arg_keys)-1):
-            grids['eqns'][arg_keys[i+1]] = np.linspace(domain_range[arg_keys[i+1]][0], domain_range[arg_keys[i+1]][1], grid_size[i])
+            grids['eqns'][arg_keys[i+1]] = np.linspace(domain_range[arg_keys[i+1]][0], domain_range[arg_keys[i+1]][1], grid_size[i+1])
         grids = Domain.bound_sampler(all_params, grids)
         grids = Domain.normalize(all_params, grids)
         all_params["domain"]["in_min"] = jnp.array([[domain_range['t'][0], domain_range['x'][0], domain_range['y'][0], domain_range['z'][0]]])

@@ -1,6 +1,6 @@
 run: RBC_G8_DNS/config/RBC_pureE_k1/
-domain_init_kwargs: {'domain_range': {'t': (0, 7.4), 'x': (0, 8), 'y': (0, 8), 'z': (0, 1)}, 'grid_size': [29, 1626, 1626, 271], 'bound_keys': ['bczu', 'bczl']}
-data_init_kwargs: {'path': '/RBC_G8_DNS/npdata/lv6_T/', 'data_keys': ['pos', 'vel', 'T'], 'viscosity': 0.00264565, 'u_ref': 0.26, 'v_ref': 0.26, 'w_ref': 0.4, 'p_ref': 0.26, 'T_ref': 0.5}
+domain_init_kwargs: {'domain_range': {'t': (0, 7.4), 'x': (0, 8), 'y': (0, 8), 'z': (0, 1)}, 'grid_size': [29, 542, 542, 98], 'bound_keys': ['bczu', 'bczl']}
+data_init_kwargs: {'path': '/RBC_G8_DNS/npdata/lv6_T/', 'data_keys': ['pos', 'vel', 'T', 'Tx', 'Ty'], 'viscosity': 0.00264565, 'u_ref': 0.26, 'v_ref': 0.26, 'w_ref': 0.4, 'p_ref': 0.26, 'T_ref': 0.5}
 network_init_kwargs: {'key': 0, 'layer_sizes': [4, 400, 400, 400, 400, 400, 400, 400, 400, 400, 400, 400, 400, 400, 400, 400, 5], 'network_name': 'MLP'}
 problem_init_kwargs: {'loss_weights': (1.0, 1.0, 1.0, 1e-03, 1e-03, 1e-04, 1e-03), 'path_s': '/RBC_G8_DNS/npdata/validate/'}
 optimization_init_kwargs: {'optimiser': 'soap', 'learning_rate': 0.001, 'decay_step': 16000, 'decay_rate': 0.9, 'n_steps': 100000000, 'save_step': 20000, 'p_batch': 10000, 'e_batch': 10000, 'b_batch': 10000}

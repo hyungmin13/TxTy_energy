@@ -48,8 +48,8 @@ class PINN(PINNbase):
         key, network_key = random.split(global_key)
         all_params["network"] = self.c.network.init_params(**self.c.network_init_kwargs)
         all_params["problem"] = self.c.problem.init_params(**self.c.problem_init_kwargs)
-        
-        model_params = model_params
+        if 'model_params' in kwargs.keys():
+            model_params = kwargs['model_params']
         # Initialize optmiser
         learn_rate = optax.exponential_decay(self.c.optimization_init_kwargs["learning_rate"],
                                              self.c.optimization_init_kwargs["decay_step"],
@@ -59,7 +59,7 @@ class PINN(PINNbase):
         model_states = optimiser.init(all_params["network"]["layers"])
         optimiser_fn = optimiser.update
         model_fn = c.network.network_fn
-        dynamic_params = all_params["network"].pop("layers")
+        
 
         # Define equation function
         equation_fn = self.c.equation.Loss
@@ -68,14 +68,16 @@ class PINN(PINNbase):
         # Input data and grids
         grids, all_params = self.c.domain.sampler(all_params)
         train_data, all_params = self.c.data.train_data(all_params)
-        model = Model(all_params['network']['layers'], model_fn)
-        all_params["network"]["layers"] = from_state_dict(model, model_params).params
+        if 'model_params' in kwargs.keys():
+            model = Model(all_params['network']['layers'], model_fn)
+            all_params["network"]["layers"] = from_state_dict(model, model_params).params
+        dynamic_params = all_params["network"].pop("layers")
         valid_data = self.c.problem.exact_solution(all_params.copy())
         #model_states = optimiser.init(all_params["network"]["layers"])
         #optimiser_fn = optimiser.update
         #model_fn = c.network.network_fn
         #dynamic_params = all_params["network"].pop("layers")
-        print(all_params['data']['u_ref'])
+        
         # Input key initialization
         key, batch_key = random.split(key)
         num_keysplit = 10
@@ -95,6 +97,9 @@ class PINN(PINNbase):
         v_batch = random.choice(keys_next[0],train_data['vel'],shape=(self.c.optimization_init_kwargs["p_batch"],))
         Tx_batch = random.choice(keys_next[0],train_data['Tx'],shape=(self.c.optimization_init_kwargs["p_batch"],))
         Ty_batch = random.choice(keys_next[0],train_data['Ty'],shape=(self.c.optimization_init_kwargs["p_batch"],))
+        grids['eqns']['x'] = np.unique(valid_data['pos'][:,1:2])
+        grids['eqns']['y'] = np.unique(valid_data['pos'][:,2:3])
+        grids['eqns']['z'] = np.unique(valid_data['pos'][:,3:4])
         g_batch = jnp.stack([random.choice(keys_next[k+1], 
                                            grids['eqns'][arg], 
                                            shape=(self.c.optimization_init_kwargs["e_batch"],)) 
@@ -194,9 +199,9 @@ if __name__=="__main__":
     c = Constants(**data)
 
     run = PINN(c)
-    if os.path.isfile(run.c.model_out_dir+'/*.pkl'):
+    if os.path.isfile(run.c.model_out_dir+'saved_dic_20000.pkl'):
         print('continuing from last checkpoint')
-        checkpoint_list = sorted(glob(run.c.model_out_dir+'/*.pkl'), key=lambda x: int(x.split('_')[-1].split('.')[0]))
+        checkpoint_list = sorted(glob(run.c.model_out_dir+'*.pkl'), key=lambda x: int(x.split('_')[-1].split('.')[0]))
         num_ext = lambda x: int(x.split('_')[-1].split('.')[0])
         num = num_ext(checkpoint_list[-1]) + 1
         with open(checkpoint_list[-1],"rb") as f:
