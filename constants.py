@@ -28,6 +28,10 @@ class ConstantsBase:
         cur_dir = os.getcwd()
         return f"{os.path.dirname(cur_dir)}/{self.run}/models/"
     @property
+    def model_out_dir2(self):
+        cur_dir = os.getcwd()
+        return f"{os.path.dirname(cur_dir)}/{self.run}/models2/"
+    @property
     def report_out_dir(self):
         cur_dir = os.getcwd()
         return f"{os.path.dirname(cur_dir)}/{self.run}/reports/"
@@ -41,6 +45,10 @@ class ConstantsBase:
             print('Loading saved checkpoints')
         else:
             Path(self.model_out_dir).mkdir(exist_ok=True, parents=True)
+        if os.path.exists(self.model_out_dir2):
+            print('Loading saved checkpoints')
+        else:
+            Path(self.model_out_dir2).mkdir(exist_ok=True, parents=True)
         if os.path.exists(self.report_out_dir):
             print('Loading saved checkpoints')
         else:
@@ -85,7 +93,8 @@ class Constants(ConstantsBase):
         
         self.domain_init_kwargs = dict()
         self.data_init_kwargs = dict()
-        self.network_init_kwargs = dict()
+        self.network1_init_kwargs = dict()
+        self.network2_init_kwargs = dict()
         self.problem_init_kwargs = dict()
         self.optimization_init_kwargs = dict()
         self.equation_init_kwargs = dict()
@@ -93,9 +102,17 @@ class Constants(ConstantsBase):
 
         self.domain = domain.Domain
         self.data = trackdata.Data
-        self.network = eval('network.'+ self.network_init_kwargs['network_name'])
+        self.network1 = eval('network.'+ self.network1_init_kwargs['network_name'])
+        try:
+            self.network2 = eval('network.'+ self.network2_init_kwargs['network_name'])
+        except:
+            print("there is no second neural network")
         self.problem = problem.Problem
-        self.equation = eval('equation.'+ self.equation_init_kwargs['equation'])
+        self.equation1 = eval('equation.'+ self.equation_init_kwargs['equation1'])
+        try:
+            self.equation2 = eval('equation.'+ self.equation_init_kwargs['equation2'])
+        except:
+            print("there is no 2nd equation")
         if self.optimization_init_kwargs['optimiser'] == 'soap':
             self.optimization_init_kwargs['optimiser'] = soap
         else:
@@ -141,7 +158,7 @@ if __name__ == "__main__":
         run= run,
         domain_init_kwargs = dict(domain_range = domain_range, grid_size = grid_size, bound_keys=bound_keys),
         data_init_kwargs = dict(path = path, viscosity = viscosity, data_keys = data_keys),
-        network_init_kwargs = dict(key = key, layer_sizes = layer_sizes, network_name = network_name),
+        network1_init_kwargs = dict(key = key, layer_sizes = layer_sizes, network_name = network_name),
         optimization_init_kwargs = dict(optimiser = optimiser, learning_rate = learning_rate, n_steps = n_steps,
                                         p_batch = p_batch, e_batch = e_batch, b_batch = b_batch)
     )

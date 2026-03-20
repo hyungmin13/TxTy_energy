@@ -33,7 +33,7 @@ class MLP(Network):
 
     @staticmethod
     def network_fn(all_params, x):
-        params = all_params["network"]["layers"]
+        params = all_params["network1"]["layers"]
         inmin = all_params["domain"]["in_min"]
         inmax = all_params["domain"]["in_max"]
         x = 2*(x - inmin)/(inmax-inmin) - 1
@@ -43,11 +43,11 @@ class MLP(Network):
         w, b, g = params[-1]
         x = jnp.dot(x,w/jnp.linalg.norm(w,axis=0, keepdims=True)) + b
         return x
-
-    def network_fn3(self, x):
-        params = self.all_params["network"]["layers"]
-        inmin = self.all_params["domain"]["in_min"]
-        inmax = self.all_params["domain"]["in_max"]
+    @staticmethod
+    def network_fn2(all_params, x):
+        params = all_params["network2"]["layers"]
+        inmin = all_params["domain"]["in_min"]
+        inmax = all_params["domain"]["in_max"]
         x = 2*(x - inmin)/(inmax-inmin) - 1
         for w, b, g in params[:-1]:
             x = g*jnp.dot(x,w/jnp.linalg.norm(w,axis=0, keepdims=True)) + b
