@@ -35,43 +35,95 @@ class PINNbase:
 
 class PINN(PINNbase):
     def test(self):
-        all_params = {"domain":{}, "data":{}, "network":{}, "problem":{}}
+        all_params = {"domain":{}, "data":{}, "network1":{}, "problem":{}}
         all_params["domain"] = self.c.domain.init_params(**self.c.domain_init_kwargs)
         all_params["data"] = self.c.data.init_params(**self.c.data_init_kwargs)
         global_key = random.PRNGKey(42)
-        all_params["network"] = self.c.network.init_params(**self.c.network_init_kwargs)
+        all_params["network1"] = self.c.network1.init_params(**self.c.network1_init_kwargs)
         all_params["problem"] = self.c.problem.init_params(**self.c.problem_init_kwargs)
         optimiser = self.c.optimization_init_kwargs["optimiser"](self.c.optimization_init_kwargs["learning_rate"])
         grids, all_params = self.c.domain.sampler(all_params)
         train_data, all_params = self.c.data.train_data(all_params)
         #all_params = self.c.problem.constraints(all_params)
         #valid_data = self.c.problem.exact_solution(all_params)
-        model_fn = c.network.network_fn
+        model_fn = c.network1.network_fn
         return all_params, model_fn, train_data
-    
-def equ_func(all_params, g_batch, cotangent, model_fns):
-    def u_t(batch):
-        return model_fns(all_params, batch)
-    def u_tt(batch):
-        return jax.jvp(u_t,(batch,), (cotangent, ))[1]
-    out_x, out_xx = jax.jvp(u_tt, (g_batch,), (cotangent,))
-    return out_x, out_xx
 
-def equ_func2(all_params, g_batch, cotangent, model_fns):
+class PINN2(PINNbase):
+    def test(self):
+        all_params = {"domain":{}, "data":{}, "network1":{}, "network2":{}, "problem":{}}
+        all_params["domain"] = self.c.domain.init_params(**self.c.domain_init_kwargs)
+        all_params["data"] = self.c.data.init_params(**self.c.data_init_kwargs)
+        global_key = random.PRNGKey(42)
+        all_params["network1"] = self.c.network1.init_params(**self.c.network1_init_kwargs)
+        all_params["network2"] = self.c.network2.init_params(**self.c.network2_init_kwargs)
+        all_params["problem"] = self.c.problem.init_params(**self.c.problem_init_kwargs)
+        optimiser = self.c.optimization_init_kwargs["optimiser"](self.c.optimization_init_kwargs["learning_rate"])
+        grids, all_params = self.c.domain.sampler(all_params)
+        train_data, all_params = self.c.data.train_data(all_params)
+        #all_params = self.c.problem.constraints(all_params)
+        #valid_data = self.c.problem.exact_solution(all_params)
+        model_fn = c.network1.network_fn
+        model_fn2 = c.network2.network_fn2
+        return all_params, model_fn, model_fn2, train_data
+
+
+
+def equ_func(all_params, g_batch, cotangent, model_fns):
     def u_t(batch):
         return model_fns(all_params, batch)
     out, out_t = jax.jvp(u_t, (g_batch,), (cotangent,))
     return out, out_t
 
-def Derivatives(dynamic_params, all_params, g_batch, model_fns):
-    keys = ['u_ref', 'v_ref', 'w_ref', 'u_ref']
+def equ_func2(all_params, g_batch, cotangent1, cotangent2, model_fns):
+    def u_t(batch):
+        return model_fns(all_params, batch)
+    def u_tt(batch):
+        return jax.jvp(u_t,(batch,), (cotangent1, ))[1]
+    out_x, out_xx = jax.jvp(u_tt, (g_batch,), (cotangent2,))
+    return out_x, out_xx
 
-    all_params["network"]["layers"] = dynamic_params
-    out, out_x = equ_func2(all_params, g_batch, jnp.tile(jnp.array([[0.0, 1.0, 0.0, 0.0]]),(g_batch.shape[0],1)),model_fns)
-    out, out_y = equ_func2(all_params, g_batch, jnp.tile(jnp.array([[0.0, 0.0, 1.0, 0.0]]),(g_batch.shape[0],1)),model_fns)
-    out, out_z = equ_func2(all_params, g_batch, jnp.tile(jnp.array([[0.0, 0.0, 0.0, 1.0]]),(g_batch.shape[0],1)),model_fns)    
+def equ_func3(all_params, g_batch, cotangent1, cotangent2, model_fns):
+    def u_t(batch):
+        return model_fns(all_params, batch)                                                                                     
+    def u_tt(batch):                                                                                                                
+        return jax.jvp(u_t,(batch,), (cotangent1, ))[1]                                                                         
+    def u_ttt(batch):                                                                                                               
+        return jax.jvp(u_tt,(batch,),(cotangent2, ))[1]                                                                         
+    out_xx, out_xxx = jax.jvp(u_ttt, (g_batch,), (cotangent2,))                                                                 
+    return out_xx, out_xxx
+
+def Derivatives(dynamic_params, all_params, g_batch, model_fns):
+    keys = ['u_ref', 'v_ref', 'w_ref', 'u_ref', 'T_ref']
+
+    all_params["network1"]["layers"] = dynamic_params
+    out, out_x = equ_func(all_params, g_batch, jnp.tile(jnp.array([[0.0, 1.0, 0.0, 0.0]]),(g_batch.shape[0],1)),model_fns)
+    out, out_y = equ_func(all_params, g_batch, jnp.tile(jnp.array([[0.0, 0.0, 1.0, 0.0]]),(g_batch.shape[0],1)),model_fns)
+    out, out_z = equ_func(all_params, g_batch, jnp.tile(jnp.array([[0.0, 0.0, 0.0, 1.0]]),(g_batch.shape[0],1)),model_fns)    
+    uvwp = np.concatenate([out[:,k:(k+1)]*all_params["data"][keys[k]] for k in range(len(keys))],1)
+    uvwp[:,-2] = 1.185*uvwp[:,-2]
+    uxs = np.concatenate([out_x[:,k:(k+1)]*all_params["data"][keys[k]]/all_params["domain"]["in_max"][0,1] for k in range(len(keys))],1)
+    uys = np.concatenate([out_y[:,k:(k+1)]*all_params["data"][keys[k]]/all_params["domain"]["in_max"][0,2] for k in range(len(keys))],1)
+    uzs = np.concatenate([out_z[:,k:(k+1)]*all_params["data"][keys[k]]/all_params["domain"]["in_max"][0,3] for k in range(len(keys))],1)
+    deriv_mat = np.concatenate([np.expand_dims(uxs,2),np.expand_dims(uys,2),np.expand_dims(uzs,2)],2)
+
+    Q = 0.5 * sum(-np.abs(0.5 * (deriv_mat[:, i, j] + deriv_mat[:, j, i]))**2 +
+                  np.abs(0.5 * (deriv_mat[:, i, j] - deriv_mat[:, j, i]))**2 
+                  for i in range(3) for j in range(3))
+    return uvwp, uxs, uys, uzs, Q
+
+def Derivatives_sep(dynamic_params, dynamic_params2, all_params, g_batch, model_fns, model_fns2):
+    keys = ['u_ref', 'v_ref', 'w_ref', 'u_ref', 'T_ref']
+
+    all_params["network1"]["layers"] = dynamic_params
+    all_params["network2"]["layers"] = dynamic_params2
+    out, out_x = equ_func(all_params, g_batch, jnp.tile(jnp.array([[0.0, 1.0, 0.0, 0.0]]),(g_batch.shape[0],1)),model_fns)
+    out, out_y = equ_func(all_params, g_batch, jnp.tile(jnp.array([[0.0, 0.0, 1.0, 0.0]]),(g_batch.shape[0],1)),model_fns)
+    out, out_z = equ_func(all_params, g_batch, jnp.tile(jnp.array([[0.0, 0.0, 0.0, 1.0]]),(g_batch.shape[0],1)),model_fns)    
     uvwp = np.concatenate([out[:,k:(k+1)]*all_params["data"][keys[k]] for k in range(len(keys))],1)
     uvwp[:,-1] = 1.185*uvwp[:,-1]
+    T = model_fns2(all_params, g_batch).reshape(-1,1)*all_params["data"][keys[-1]]
+    uvwp = np.concatenate([uvwp,T],1)
     uxs = np.concatenate([out_x[:,k:(k+1)]*all_params["data"][keys[k]]/all_params["domain"]["in_max"][0,1] for k in range(len(keys))],1)
     uys = np.concatenate([out_y[:,k:(k+1)]*all_params["data"][keys[k]]/all_params["domain"]["in_max"][0,2] for k in range(len(keys))],1)
     uzs = np.concatenate([out_z[:,k:(k+1)]*all_params["data"][keys[k]]/all_params["domain"]["in_max"][0,3] for k in range(len(keys))],1)
@@ -82,14 +134,71 @@ def Derivatives(dynamic_params, all_params, g_batch, model_fns):
     Q = 0.5 * sum(-np.abs(0.5 * (deriv_mat[:, i, j] + deriv_mat[:, j, i]))**2 +
                   np.abs(0.5 * (deriv_mat[:, i, j] - deriv_mat[:, j, i]))**2 
                   for i in range(3) for j in range(3))
-    return uvwp, vor_mag, Q, deriv_mat
+    return uvwp, uxs, uys, uzs, Q
 
-def Tecplotfile_gen(path, name, all_params, domain_range, output_shape, order, timestep, is_ground, is_mean, model_fn):
+def Derivatives_vec(dynamic_params, dynamic_params2, all_params, g_batch, model_fns, model_fns2):
+    keys = ['u_ref', 'v_ref', 'w_ref', 'u_ref', 'T_ref']
+    all_params["network1"]["layers"] = dynamic_params
+    all_params["network2"]["layers"] = dynamic_params2
+    out_x, out_tx = equ_func2(all_params, g_batch, jnp.tile(jnp.array([[0.0, 1.0, 0.0, 0.0]]),(g_batch.shape[0],1)), jnp.tile(jnp.array([[1.0, 0.0, 0.0, 0.0]]),(g_batch.shape[0],1)),model_fns)
+    out_y, out_ty = equ_func2(all_params, g_batch, jnp.tile(jnp.array([[0.0, 0.0, 1.0, 0.0]]),(g_batch.shape[0],1)), jnp.tile(jnp.array([[1.0, 0.0, 0.0, 0.0]]),(g_batch.shape[0],1)),model_fns)
+    out_z, out_tz = equ_func2(all_params, g_batch, jnp.tile(jnp.array([[0.0, 0.0, 0.0, 1.0]]),(g_batch.shape[0],1)), jnp.tile(jnp.array([[1.0, 0.0, 0.0, 0.0]]),(g_batch.shape[0],1)),model_fns)
+    out_xx, out_xxx = equ_func3(all_params, g_batch, jnp.tile(jnp.array([[0.0, 1.0, 0.0, 0.0]]),(g_batch.shape[0],1)), jnp.tile(jnp.array([[0.0, 1.0, 0.0, 0.0]]),(g_batch.shape[0],1)),model_fns)
+    out_xy, out_xyy = equ_func3(all_params, g_batch, jnp.tile(jnp.array([[0.0, 1.0, 0.0, 0.0]]),(g_batch.shape[0],1)), jnp.tile(jnp.array([[0.0, 0.0, 1.0, 0.0]]),(g_batch.shape[0],1)),model_fns)
+    out_xz, out_xzz = equ_func3(all_params, g_batch, jnp.tile(jnp.array([[0.0, 1.0, 0.0, 0.0]]),(g_batch.shape[0],1)), jnp.tile(jnp.array([[0.0, 0.0, 0.0, 1.0]]),(g_batch.shape[0],1)),model_fns)
+    _, out_xxz = equ_func3(all_params, g_batch, jnp.tile(jnp.array([[0.0, 0.0, 0.0, 1.0]]),(g_batch.shape[0],1)), jnp.tile(jnp.array([[0.0, 1.0, 0.0, 0.0]]),(g_batch.shape[0],1)),model_fns)
+    _, out_xxy = equ_func3(all_params, g_batch, jnp.tile(jnp.array([[0.0, 0.0, 1.0, 0.0]]),(g_batch.shape[0],1)), jnp.tile(jnp.array([[0.0, 1.0, 0.0, 0.0]]),(g_batch.shape[0],1)),model_fns)
+    out_yy, out_yyy = equ_func3(all_params, g_batch, jnp.tile(jnp.array([[0.0, 0.0, 1.0, 0.0]]),(g_batch.shape[0],1)), jnp.tile(jnp.array([[0.0, 0.0, 1.0, 0.0]]),(g_batch.shape[0],1)),model_fns)
+    out_yz, out_yyz = equ_func3(all_params, g_batch, jnp.tile(jnp.array([[0.0, 0.0, 0.0, 1.0]]),(g_batch.shape[0],1)), jnp.tile(jnp.array([[0.0, 0.0, 1.0, 0.0]]),(g_batch.shape[0],1)),model_fns)
+    _, out_yzz = equ_func3(all_params, g_batch, jnp.tile(jnp.array([[0.0, 0.0, 1.0, 0.0]]),(g_batch.shape[0],1)), jnp.tile(jnp.array([[0.0, 0.0, 0.0, 1.0]]),(g_batch.shape[0],1)),model_fns)
+    out_zz, out_zzz = equ_func3(all_params, g_batch, jnp.tile(jnp.array([[0.0, 0.0, 0.0, 1.0]]),(g_batch.shape[0],1)), jnp.tile(jnp.array([[0.0, 0.0, 0.0, 1.0]]),(g_batch.shape[0],1)),model_fns)
+    out_T = model_fns2(all_params, g_batch)
+    p = out_T[:,0:1]*1.185*all_params["data"][keys[-2]]
+    T = out_T[:,1:2]*all_params["data"][keys[-1]]
+    u = out_y[:,2:3] - out_z[:,1:2]
+    ut = out_ty[:,2:3] - out_tz[:,1:2]
+    ux = (out_xy[:,2:3] - out_xz[:,1:2])/all_params["domain"]["domain_range"]["x"][1]
+    uy = (out_yy[:,2:3] - out_yz[:,1:2])/all_params["domain"]["domain_range"]["y"][1]
+    uz = (out_yz[:,2:3] - out_zz[:,1:2])/all_params["domain"]["domain_range"]["z"][1]
+    uxx = (out_xxy[:,2:3] - out_xxz[:,1:2])/all_params["domain"]["domain_range"]["x"][1]**2
+    uyy = (out_yyy[:,2:3] - out_yyz[:,1:2])/all_params["domain"]["domain_range"]["y"][1]**2
+    uzz = (out_yzz[:,2:3] - out_zzz[:,1:2])/all_params["domain"]["domain_range"]["z"][1]**2
+    v = out_z[:,0:1] - out_x[:,2:3]
+    vt = out_tz[:,0:1] - out_tx[:,2:3]
+    vx = out_xz[:,0:1] - out_xx[:,2:3]/all_params["domain"]["domain_range"]["x"][1]
+    vy = out_yz[:,0:1] - out_xy[:,2:3]/all_params["domain"]["domain_range"]["y"][1]
+    vz = out_zz[:,0:1] - out_xz[:,2:3]/all_params["domain"]["domain_range"]["z"][1]
+    vxx = out_xxz[:,0:1] - out_xxx[:,2:3]/all_params["domain"]["domain_range"]["x"][1]**2
+    vyy = out_yyz[:,0:1] - out_xyy[:,2:3]/all_params["domain"]["domain_range"]["y"][1]**2
+    vzz = out_zzz[:,0:1] - out_xzz[:,2:3]/all_params["domain"]["domain_range"]["z"][1]**2
+    w = out_x[:,1:2] - out_y[:,0:1]
+    wt = out_tx[:,1:2] - out_ty[:,0:1]
+    wx = out_xx[:,1:2] - out_xy[:,0:1]/all_params["domain"]["domain_range"]["x"][1]
+    wy = out_xy[:,1:2] - out_yy[:,0:1]/all_params["domain"]["domain_range"]["y"][1]
+    wz = out_xz[:,1:2] - out_yz[:,0:1]/all_params["domain"]["domain_range"]["z"][1]
+    wxx = out_xxx[:,1:2] - out_xxy[:,0:1]/all_params["domain"]["domain_range"]["x"][1]**2
+    wyy = out_xyy[:,1:2] - out_yyy[:,0:1]/all_params["domain"]["domain_range"]["y"][1]**2
+    wzz = out_xzz[:,1:2] - out_yzz[:,0:1]/all_params["domain"]["domain_range"]["z"][1]**2
+    uvw = np.concatenate([u,v,w,p,T],1)
+    uts = np.concatenate([ut,vt,wt],1)
+    uxs = np.concatenate([ux,vx,wx],1)
+    uys = np.concatenate([uy,vy,wy],1)
+    uzs = np.concatenate([uz,vz,wz],1)
+    uxxs = np.concatenate([uxx, vxx, wxx, uyy, vyy, wyy, uzz, vzz, wzz],1)
+    deriv_mat = np.concatenate([np.expand_dims(uxs,2), np.expand_dims(uys,2), np.expand_dims(uzs,2)],2)
+    #Q = uy*vx + uz*wx +vz*wy - 0.5*(uy**2+uz**2+vx**2+vz**2+wx**2+wy**2)
+    Q = 0.5 * sum(-np.abs(0.5 * (deriv_mat[:, i, j] + deriv_mat[:, j, i]))**2 +
+                  np.abs(0.5 * (deriv_mat[:, i, j] - deriv_mat[:, j, i]))**2
+                  for i in range(3) for j in range(3))
+    return uvw, uxs, uys, uzs, Q
+
+def Tecplotfile_gen(c, path, name, all_params, domain_range, output_shape, order, timestep, is_ground, is_mean, model_fn, model_fn2=None):
     
     # Load the parameters
     pos_ref = all_params["domain"]["in_max"].flatten()
-    dynamic_params = all_params["network"].pop("layers")
-
+    dynamic_params = all_params["network1"].pop("layers")
+    if model_fn2:
+        dynamic_params2 = all_params["network2"].pop("layers")
     # Create the evaluation grid
     gridbase = [np.linspace(domain_range[key][0], domain_range[key][1], output_shape[i]) for i, key in enumerate(['t', 'x', 'y', 'z'])]
     gridbase_n = [gridbase[i].copy()/pos_ref[i] for i in range(len(gridbase))]
@@ -125,14 +234,25 @@ def Tecplotfile_gen(path, name, all_params, domain_range, output_shape, order, t
         mean_data = np.load(path + 'mean')
 
     # Evaluate the derivatives
-    uvwp, vor_mag, Q, deriv_mat = zip(*[Derivatives(dynamic_params, all_params, eval_grid[i:i+10000], model_fn)
-                                        for i in range(0, eval_grid.shape[0], 10000)])
+    if "network2" in all_params.keys():
+        if "equation2" in c.equation_init_kwargs.keys():
+            print('network2 and equation2')
+            uvwp, uxs, uys, uzs, Q = zip(*[Derivatives_sep(dynamic_params, dynamic_params2, all_params, eval_grid[i:i+10000], model_fn, model_fn2)
+                                                for i in range(0, eval_grid.shape[0], 10000)])
+        else:
+            print('network2')
+            uvwp, uxs, uys, uzs, Q = zip(*[Derivatives_vec(dynamic_params, dynamic_params2, all_params, eval_grid[i:i+10000], model_fn, model_fn2)
+                                                for i in range(0, eval_grid.shape[0], 10000)])
+    else:
+        uvwp, uxs, uys, uzs, Q = zip(*[Derivatives(dynamic_params, all_params, eval_grid[i:i+10000], model_fn)
+                                            for i in range(0, eval_grid.shape[0], 10000)])
     
     # Concatenate the results
     uvwp = np.concatenate(uvwp, axis=0)
-    vor_mag = np.concatenate(vor_mag, axis=0)
+    uxs = np.concatenate(uxs, axis=0)
+    uys = np.concatenate(uys, axis=0)
+    uzs = np.concatenate(uzs, axis=0)
     Q = np.concatenate(Q, axis=0)
-    deriv_mat = np.concatenate(deriv_mat, axis=0)
     uvwp[:,3] = uvwp[:,3] - np.mean(uvwp[:,3])
 
     if is_ground:
@@ -178,7 +298,7 @@ def Tecplotfile_gen(path, name, all_params, domain_range, output_shape, order, t
     else:
         print('check')
         os.mkdir(path + 'npyresult/' + name)
-    np.save(path + 'npyresult/' + name + f'/ts_{timestep:02d}' + '.npy', np.concatenate([eval_grid_e, uvwp, deriv_mat[:,:,0], deriv_mat[:,:,1], deriv_mat[:,:,2]], axis=1))
+    np.save(path + 'npyresult/' + name + f'/ts_{timestep:02d}' + '.npy', np.concatenate([eval_grid_e, uvwp, uxs, uys, uzs], axis=1))
 #%%
 if __name__ == "__main__":
     from domain import *
@@ -202,24 +322,48 @@ if __name__ == "__main__":
     with open(os.path.dirname(cur_dir)+ '/' + data['path'] + args.foldername +'/summary/constants.pickle','rb') as f:
         constants = pickle.load(f)
     values = list(constants.values())
-
-    c = Constants(run = values[0],
-                domain_init_kwargs = values[1],
-                data_init_kwargs = values[2],
-                network_init_kwargs = values[3],
-                problem_init_kwargs = values[4],
-                optimization_init_kwargs = values[5],
-                equation_init_kwargs = values[6],)
-    run = PINN(c)
+    print(values)
+    if values[4]:
+        c = Constants(run = values[0],
+                    domain_init_kwargs = values[1],
+                    data_init_kwargs = values[2],
+                    network1_init_kwargs = values[3],
+                    network2_init_kwargs = values[4],
+                    problem_init_kwargs = values[5],
+                    optimization_init_kwargs = values[6],
+                    equation_init_kwargs = values[7],)
+    else:
+        c = Constants(run = values[0],
+                    domain_init_kwargs = values[1],
+                    data_init_kwargs = values[2],
+                    network1_init_kwargs = values[3],
+                    problem_init_kwargs = values[5],
+                    optimization_init_kwargs = values[6],
+                    equation_init_kwargs = values[7],)
+    if values[4]:
+        run = PINN2(c)
+    else:
+        run = PINN(c)
 
     # Get model parameters
     checkpoint_list = sorted(glob(run.c.model_out_dir+'/*.pkl'), key=lambda x: int(x.split('_')[-1].split('.')[0]))
-
+    if values[4]:
+        checkpoint_list2 = sorted(glob(run.c.model_out_dir2+'/*.pkl'), key=lambda x: int(x.split('_')[-1].split('.')[0]))
     with open(checkpoint_list[-1],"rb") as f:
         model_params = pickle.load(f)
-    all_params, model_fn, train_data = run.test()
-    model = Model(all_params["network"]["layers"], model_fn)
-    all_params["network"]["layers"] = from_state_dict(model, model_params).params
+    if values[4]:
+        with open(checkpoint_list2[-1],"rb") as f:
+            model_params2 = pickle.load(f)
+    if values[4]:
+        all_params, model_fn, model_fn2, train_data = run.test()
+    else:
+        all_params, model_fn, train_data = run.test()
+    model = Model(all_params["network1"]["layers"], model_fn)
+    if values[4]:
+        model2 = Model(all_params["network2"]["layers"], model_fn2)
+    all_params["network1"]["layers"] = from_state_dict(model, model_params).params
+    if values[4]:
+        all_params["network2"]["layers"] = from_state_dict(model2, model_params2).params
     domain_range = data['tecplot_init_kwargs']['domain_range']
     output_shape = data['tecplot_init_kwargs']['out_shape']
     order = data['tecplot_init_kwargs']['order']
@@ -229,5 +373,10 @@ if __name__ == "__main__":
     is_mean = data['tecplot_init_kwargs']['is_mean']
     path = os.path.dirname(cur_dir) + '/' + path
     pos_ref = all_params["domain"]["in_max"].flatten()
-    for timestep in timesteps:
-        Tecplotfile_gen(path, args.foldername, all_params, domain_range, output_shape, order, timestep, is_ground, is_mean, model_fn)
+    if "network2" in all_params.keys():
+        for timestep in timesteps:
+            Tecplotfile_gen(c, path, args.foldername, all_params, domain_range, output_shape, order, timestep, is_ground, is_mean, model_fn, model_fn2)
+
+    else:
+        for timestep in timesteps:
+            Tecplotfile_gen(c, path, args.foldername, all_params, domain_range, output_shape, order, timestep, is_ground, is_mean, model_fn)

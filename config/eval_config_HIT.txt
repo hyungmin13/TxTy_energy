@@ -1,0 +1,4 @@
+path: RBC_G8_DNS/config/
+temporal_init_kwargs: {'activate': 1}
+behavior_init_kwargs: {'activate': 0, 'timestep': 25}
+tecplot_init_kwargs: {'activate': 0, 'is_ground': 0, 'is_mean': 0, 'path': 'RBC_G8_DNS/', 'order': (0,1,2), 'out_shape': (51, 542, 542, 98), 'domain_range': {'t': (0, 7.4), 'x': (0, 8), 'y': (0, 8), 'z': (0, 1)}, 'timestep': (25,)}

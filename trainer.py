@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 import scipy.stats as st
 from soap_jax import soap
 import itertools
+import numpy as np
 class Model(struct.PyTreeNode):
     params: Any
     forward: callable = struct.field(pytree_node=False)
@@ -24,14 +25,14 @@ class Model(struct.PyTreeNode):
         return self.forward(*args)
 
 @partial(jax.jit, static_argnums=(1, 2, 5, 10))
-def PINN_update(model_states, optimiser_fn, equation_fn, dynamic_params, static_params, static_keys, grids, particles, particle_vel, particle_bd, model_fn):
+def PINN_update(model_state, optimiser_fn, equation_fn, dynamic_param, static_params, static_keys, grids, particles, particle_vel, particle_bd, model_fn):
     static_leaves, treedef = static_keys
     leaves = [d if s is None else s for d, s in zip(static_params, static_leaves)]
     all_params = jax.tree_util.tree_unflatten(treedef, leaves)
-    lossval, grads = value_and_grad(equation_fn, argnums=0)(dynamic_params, all_params, grids, particles, particle_vel, particle_bd, model_fn)
-    updates, model_states = optimiser_fn(grads, model_states, dynamic_params)
-    dynamic_params = optax.apply_updates(dynamic_params, updates)
-    return lossval, model_states, dynamic_params
+    lossval, grads = value_and_grad(equation_fn, argnums=0)(dynamic_param, all_params, grids, particles, particle_vel, particle_bd, model_fn)
+    updates, model_state = optimiser_fn(grads, model_state, dynamic_param)
+    dynamic_param = optax.apply_updates(dynamic_param, updates)
+    return lossval, model_state, dynamic_param
 
 @partial(jax.jit, static_argnums=(2, 3, 7, 12, 13))
 def PINN_update2(model_states, model_states2, optimiser_fn, equation_fn, dynamic_params, dynamic_params2, static_params, static_keys, grids, particles, particle_vel, particle_bd, model_fn, model_fn2):
@@ -79,8 +80,8 @@ class PINN(PINNbase):
             print("2nd network is not intialized")
         all_params["problem"] = self.c.problem.init_params(**self.c.problem_init_kwargs)
 
-        if 'model_params' in kwargs.keys():
-            model_params = kwargs['model_params']
+        #if 'model_params' in kwargs.keys():
+        #    model_params = kwargs['model_params']
         # Initialize optmiser
         learn_rate = optax.exponential_decay(self.c.optimization_init_kwargs["learning_rate"],
                                              self.c.optimization_init_kwargs["decay_step"],
@@ -89,23 +90,23 @@ class PINN(PINNbase):
                                                                  weight_decay=0.01, precondition_frequency=5)
         model_state = optimiser.init(all_params["network1"]["layers"])
         optimiser_fn = optimiser.update
-        model_fn = c.network1.network_fn
+        model_fn = self.c.network1.network_fn
         equation_fn = self.c.equation1.Loss
         report_fn = self.c.equation1.Loss_report
 
         if "network2" in all_params.keys():
             model_state2 = optimiser.init(all_params["network2"]["layers"])
             optimiser_fn2 = optimiser.update
-            model_fn2 = c.network2.network_fn2
+            model_fn2 = self.c.network2.network_fn2
 
         # Define equation function
 
         # Input data and grids
         grids, all_params = self.c.domain.sampler(all_params)
         train_data, all_params = self.c.data.train_data(all_params)
-        if 'model_params' in kwargs.keys():
-            model = Model(all_params['network']['layers'], model_fn)
-            all_params["network"]["layers"] = from_state_dict(model, model_params).params
+        #if 'model_params' in kwargs.keys():
+        #    model = Model(all_params['network']['layers'], model_fn)
+        #    all_params["network"]["layers"] = from_state_dict(model, model_params).params
         dynamic_param = all_params["network1"].pop("layers")
 
         if "network2" in all_params.keys():
@@ -140,6 +141,8 @@ class PINN(PINNbase):
             batch_v = train_data['vel'][perm_p[i*self.c.optimization_init_kwargs["p_batch"]:(i+1)*self.c.optimization_init_kwargs["p_batch"]],:]
             data_p.append(batch_p)
             data_v.append(batch_v)
+        data_p.append(train_data['pos'][perm_p[-1-self.c.optimization_init_kwargs["p_batch"]:-1],:])
+        data_v.append(train_data['vel'][perm_p[-1-self.c.optimization_init_kwargs["p_batch"]:-1],:])
         p_batches = itertools.cycle(data_p)
         v_batches = itertools.cycle(data_v)
         p_batch = next(p_batches)
@@ -197,13 +200,13 @@ class PINN(PINNbase):
                                                         shape=(self.c.optimization_init_kwargs["e_batch"],)) 
                                             for k, arg in enumerate(list(all_params["domain"]["domain_range"].keys()))],axis=1)
                         b_batches.append(b_batch)
-                    lossval, lossval2, model_state, model_state2, dynamic_params, dynamic_param2 = update(model_state, model_state2, dynamic_param, dynamic_param2, static_params, 
+                    lossval, lossval2, model_state, model_state2, dynamic_param, dynamic_param2 = update(model_state, model_state2, dynamic_param, dynamic_param2, static_params, 
                                                                                                 g_batch, p_batch, v_batch, b_batches)
                 
                 
-                    self.report2(numb+i, report_fn, dynamic_params, dynamic_param2, all_params, p_batch, 
+                    self.report2(numb+i, report_fn, dynamic_param, dynamic_param2, all_params, p_batch, 
                                     v_batch, g_batch, b_batch, valid_data, keys_iter[-1], self.c.optimization_init_kwargs["save_step"], model_fn, model_fn2)
-                    self.save_model2(numb+i, dynamic_params, dynamic_param2, all_params, self.c.optimization_init_kwargs["save_step"], model_fn, model_fn2)
+                    self.save_model2(numb+i, dynamic_param, dynamic_param2, all_params, self.c.optimization_init_kwargs["save_step"], model_fn, model_fn2)
             else:
                 for i in range(self.c.optimization_init_kwargs["n_steps"]):
                     keys_next = [next(keys_iter[i]) for i in range(num_keysplit)]
@@ -220,14 +223,15 @@ class PINN(PINNbase):
                                                         shape=(self.c.optimization_init_kwargs["e_batch"],)) 
                                             for k, arg in enumerate(list(all_params["domain"]["domain_range"].keys()))],axis=1)
                         b_batches.append(b_batch)
-                    lossval, model_state, model_state2, dynamic_params, dynamic_param2 = update(model_state, model_state2, dynamic_param, dynamic_param2, static_params, 
+                    lossval, model_state, model_state2, dynamic_param, dynamic_param2 = update(model_state, model_state2, dynamic_param, dynamic_param2, static_params, 
                                                                                                 g_batch, p_batch, v_batch, b_batches)
                 
                 
-                    self.report2(numb+i, report_fn, dynamic_params, dynamic_param2, all_params, p_batch, 
+                    self.report2(numb+i, report_fn, dynamic_param, dynamic_param2, all_params, p_batch, 
                                     v_batch, g_batch, b_batch, valid_data, keys_iter[-1], self.c.optimization_init_kwargs["save_step"], model_fn, model_fn2)
-                    self.save_model2(numb+i, dynamic_params, dynamic_param2, all_params, self.c.optimization_init_kwargs["save_step"], model_fn, model_fn2)
+                    self.save_model2(numb+i, dynamic_param, dynamic_param2, all_params, self.c.optimization_init_kwargs["save_step"], model_fn, model_fn2)
         else:
+            print('lets go')
             for i in range(self.c.optimization_init_kwargs["n_steps"]):
                 keys_next = [next(keys_iter[i]) for i in range(num_keysplit)]
                 p_batch = next(p_batches)
@@ -236,6 +240,7 @@ class PINN(PINNbase):
                                                 grids['eqns'][arg], 
                                                 shape=(self.c.optimization_init_kwargs["e_batch"],)) 
                                     for k, arg in enumerate(list(all_params["domain"]["domain_range"].keys()))],axis=1)
+                
                 b_batches = []
                 for b_key in all_params["domain"]["bound_keys"]:
                     b_batch = jnp.stack([random.choice(keys_next[k+5], 
@@ -243,11 +248,11 @@ class PINN(PINNbase):
                                                     shape=(self.c.optimization_init_kwargs["e_batch"],)) 
                                         for k, arg in enumerate(list(all_params["domain"]["domain_range"].keys()))],axis=1)
                     b_batches.append(b_batch)
-                lossval, model_state, dynamic_params = update(model_state, dynamic_param, static_params, g_batch, p_batch, v_batch, b_batches)
+                lossval, model_state, dynamic_param = update(model_state, dynamic_param, static_params, g_batch, p_batch, v_batch, b_batches)
             
             
-                self.report(numb+i, report_fn, dynamic_params, all_params, p_batch, v_batch, g_batch, b_batch, valid_data, keys_iter[-1], self.c.optimization_init_kwargs["save_step"], model_fn)
-                self.save_model1(numb+i, dynamic_params, all_params, self.c.optimization_init_kwargs["save_step"], model_fn)
+                self.report(numb+i, report_fn, dynamic_param, all_params, p_batch, v_batch, g_batch, b_batch, valid_data, keys_iter[-1], self.c.optimization_init_kwargs["save_step"], model_fn)
+                self.save_model1(numb+i, dynamic_param, all_params, self.c.optimization_init_kwargs["save_step"], model_fn)
 
     def save_model1(self, i, dynamic_params, all_params, save_step, model_fns):
         model_save = (i % save_step == 0)
