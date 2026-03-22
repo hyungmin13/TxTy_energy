@@ -201,18 +201,19 @@ def Tecplotfile_gen(c, path, name, all_params, domain_range, output_shape, order
         dynamic_params2 = all_params["network2"].pop("layers")
     # Create the evaluation grid
     gridbase = [np.linspace(domain_range[key][0], domain_range[key][1], output_shape[i]) for i, key in enumerate(['t', 'x', 'y', 'z'])]
+    print(gridbase)
     gridbase_n = [gridbase[i].copy()/pos_ref[i] for i in range(len(gridbase))]
     if order[0] == 0:
         if order[1] == 1:
             z_e, y_e, x_e = np.meshgrid(gridbase[-1], gridbase[-2], gridbase[-3], indexing='ij')
             z_n, y_n, x_n = np.meshgrid(gridbase_n[-1], gridbase_n[-2], gridbase_n[-3], indexing='ij')
         else:
-            y_e, z_e, x_e = np.meshgrid(gridbase[-2], gridbase[-1], gridbase[-3], indexing='ij')
-            y_n, z_n, x_n = np.meshgrid(gridbase_n[-2], gridbase_n[-1], gridbase_n[-3], indexing='ij')
+            z_e, x_e, y_e = np.meshgrid(gridbase[-2], gridbase[-1], gridbase[-3], indexing='ij')
+            z_n, x_n, y_n = np.meshgrid(gridbase_n[-2], gridbase_n[-1], gridbase_n[-3], indexing='ij')
     elif order[0] == 1:
         if order[1] == 0:
-            z_e, x_e, y_e = np.meshgrid(gridbase[-1], gridbase[-3], gridbase[-2], indexing='ij')
-            z_n, x_n, y_n = np.meshgrid(gridbase_n[-1], gridbase_n[-3], gridbase_n[-2], indexing='ij')
+            y_e, z_e, x_e = np.meshgrid(gridbase[-1], gridbase[-3], gridbase[-2], indexing='ij')
+            y_n, z_n, x_n = np.meshgrid(gridbase_n[-1], gridbase_n[-3], gridbase_n[-2], indexing='ij')
         else:
             y_e, x_e, z_e = np.meshgrid(gridbase[-2], gridbase[-3], gridbase[-1], indexing='ij')
             y_n, x_n, z_n = np.meshgrid(gridbase_n[-2], gridbase_n[-3], gridbase_n[-1], indexing='ij')
@@ -227,6 +228,7 @@ def Tecplotfile_gen(c, path, name, all_params, domain_range, output_shape, order
     t_n = np.zeros(output_shape[1:]) + gridbase_n[0][timestep]
     eval_grid = np.concatenate([t_n.reshape(-1,1), x_n.reshape(-1,1), y_n.reshape(-1,1), z_n.reshape(-1,1)], axis=1)
     eval_grid_e = np.concatenate([t_e.reshape(-1,1), x_e.reshape(-1,1), y_e.reshape(-1,1), z_e.reshape(-1,1)], axis=1)
+    print(np.max(eval_grid[:,0]), np.max(eval_grid[:,1]), np.max(eval_grid[:,2]), np.max(eval_grid[:,3]))
     # Load Ground truth data if is_ground is True
     if is_ground:
         ground_data = np.load(path + 'ground/ts_' + str(timestep).zfill(2) + '.npy')
