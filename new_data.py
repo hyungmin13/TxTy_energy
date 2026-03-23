@@ -170,7 +170,7 @@ def Derivatives(dynamic_params, all_params, g_batch, model_fns):
 
     return uvwp, Tx, Ty
 
-def Tecplotfile_gen(c, path, name, particles, all_params, domain_range, output_shape, order, timestep, is_ground, is_mean, model_fn, model_fn2=None):
+def Tecplotfile_gen(c, path, name, particles, particles_vel, all_params, domain_range, output_shape, order, timestep, is_ground, is_mean, model_fn, model_fn2=None):
     
     # Load the parameters
     pos_ref = all_params["domain"]["in_max"].flatten()
@@ -186,13 +186,14 @@ def Tecplotfile_gen(c, path, name, particles, all_params, domain_range, output_s
     pos[:,2] = pos[:,2]*domain_range['y'][1]
     pos[:,3] = pos[:,3]*domain_range['z'][1]
     print(np.max(pos_n[:,0]), np.max(pos_n[:,1]), np.max(pos_n[:,2]), np.max(pos_n[:,3]))
-
+    print(pos_n.shape)
     # Evaluate the derivatives
     uvwp, Tx, Ty = zip(*[Derivatives(dynamic_params, all_params, pos_n[i:i+10000], model_fn)
                                             for i in range(0, pos_n.shape[0], 10000)])
     
     # Concatenate the results
     uvwp = np.concatenate(uvwp, axis=0)
+    print(uvwp.shape)
     Tx = np.concatenate(Tx, axis=0)
     Ty = np.concatenate(Ty, axis=0)
 
@@ -201,7 +202,7 @@ def Tecplotfile_gen(c, path, name, particles, all_params, domain_range, output_s
     else:
         print('check')
         os.mkdir(path + 'newdata/' + name)
-    np.save(path + 'newdata/' + name + f'/ts_{timestep:02d}' + '.npy', np.concatenate([pos, uvwp, Tx, Ty], axis=1))
+    np.save(path + 'newdata/' + name + f'/ts_{timestep:02d}' + '.npy', np.concatenate([pos, particles_vel, Tx.reshape(-1,1), Ty.reshape(-1,1)], axis=1))
 #%%
 if __name__ == "__main__":
     from domain import *
@@ -278,7 +279,8 @@ if __name__ == "__main__":
     pos_ref = all_params["domain"]["in_max"].flatten()
     pos = train_data['pos']
     _, counts = np.unique(pos[:,0],return_counts=True)
-    
+    vel = train_data['vel']
+    print(pos.shape)
     if "network2" in all_params.keys():
         for timestep in timesteps:
             Tecplotfile_gen(c, path, args.foldername, all_params, domain_range, output_shape, order, timestep, is_ground, is_mean, model_fn, model_fn2)
@@ -286,4 +288,5 @@ if __name__ == "__main__":
     else:
         for timestep in timesteps:
             pos_new = pos[np.sum(counts[:timestep]):np.sum(counts[:timestep+1]),:]
-            Tecplotfile_gen(c, path, args.foldername, pos, all_params, domain_range, output_shape, order, timestep, is_ground, is_mean, model_fn)
+            vel_new = vel[np.sum(counts[:timestep]):np.sum(counts[:timestep+1]),:]
+            Tecplotfile_gen(c, path, args.foldername, pos_new, vel_new, all_params, domain_range, output_shape, order, timestep, is_ground, is_mean, model_fn)
