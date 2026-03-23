@@ -2010,7 +2010,7 @@ class Energy_pure_adi(Equation):
             out_x, out_xx = jax.jvp(u_tt, (g_batch,), (cotangent,))
             return out_x, out_xx
    
-        all_params["network"]["layers"] = dynamic_params
+        all_params["network1"]["layers"] = dynamic_params
         weights = all_params["problem"]["loss_weights"]
         out, out_t = first_order(all_params, g_batch, jnp.tile(jnp.array([[1.0, 0.0, 0.0, 0.0]]),(g_batch.shape[0],1)),model_fns)
         out_x, out_xx = second_order(all_params, g_batch, jnp.tile(jnp.array([[0.0, 1.0, 0.0, 0.0]]),(g_batch.shape[0],1)),model_fns)
@@ -2106,7 +2106,7 @@ class Energy_pure_adi(Equation):
                     weights[10]*(loss_T_bu + loss_T_bb)
         return total_loss
     @staticmethod
-    def Loss_report(dynamic_params, all_params, g_batch, particles, particle_vel, e_batch, ev_batch, eT_batch, particle_Tx, particle_Ty, boundaries, model_fns):
+    def Loss_report(dynamic_params, all_params, g_batch, particles, particle_vel, e_batch, ev_batch, particle_Tx, particle_Ty, boundaries, model_fns):
         def first_order(all_params, g_batch, cotangent, model_fns):
             def u_t(batch):
                 return model_fns(all_params, batch)
@@ -2120,7 +2120,7 @@ class Energy_pure_adi(Equation):
                 return jax.jvp(u_t,(batch,), (cotangent, ))[1]
             out_x, out_xx = jax.jvp(u_tt, (g_batch,), (cotangent,))
             return out_x, out_xx
-        all_params["network"]["layers"] = dynamic_params
+        all_params["network1"]["layers"] = dynamic_params
         weights = all_params["problem"]["loss_weights"]
         out, out_t = first_order(all_params, g_batch, jnp.tile(jnp.array([[1.0, 0.0, 0.0, 0.0]]),(g_batch.shape[0],1)),model_fns)
         out_x, out_xx = second_order(all_params, g_batch, jnp.tile(jnp.array([[0.0, 1.0, 0.0, 0.0]]),(g_batch.shape[0],1)),model_fns)
@@ -2212,9 +2212,9 @@ class Energy_pure_adi(Equation):
         u_error = jnp.linalg.norm(e_out[:,0:1]*all_params["data"]['u_ref']-ev_batch[:,0:1])/jnp.linalg.norm(ev_batch[:,0:1])
         v_error = jnp.linalg.norm(e_out[:,1:2]*all_params["data"]['v_ref']-ev_batch[:,1:2])/jnp.linalg.norm(ev_batch[:,1:2])
         w_error = jnp.linalg.norm(e_out[:,2:3]*all_params["data"]['w_ref']-ev_batch[:,2:3])/jnp.linalg.norm(ev_batch[:,2:3])
-        T_error = jnp.linalg.norm(e_out[:,4]*all_params["data"]['T_ref']-eT_batch)/jnp.linalg.norm(eT_batch)
+        #T_error = jnp.linalg.norm(e_out[:,4]*all_params["data"]['T_ref']-eT_batch)/jnp.linalg.norm(eT_batch)
         total_loss = weights[0]*loss_u + weights[1]*loss_v + weights[2]*loss_w + \
                     weights[3]*loss_con + weights[4]*loss_NS1 + weights[5]*loss_NS2 + weights[6]*loss_NS3 + \
                     weights[7]*loss_Tx + weights[8]*loss_Ty + weights[9]*loss_ENR + \
                     weights[10]*(loss_T_bu + loss_T_bb)
-        return total_loss, loss_u, loss_v, loss_w, loss_con, loss_NS1, loss_NS2, loss_NS3, loss_ENR, loss_T_bu, loss_T_bb, loss_Tx, loss_Ty, u_error, v_error, w_error, T_error
+        return total_loss, loss_u, loss_v, loss_w, loss_con, loss_NS1, loss_NS2, loss_NS3, loss_ENR, loss_T_bu, loss_T_bb, loss_Tx, loss_Ty, u_error, v_error, w_error, 0.0
