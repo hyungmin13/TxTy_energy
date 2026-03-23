@@ -334,11 +334,11 @@ def Tecplotfile_gen(c, path, name, all_params, domain_range, output_shape, order
     gridbase_n = [gridbase[i].copy()/pos_ref[i] for i in range(len(gridbase))]
     if order[0] == 0:
         if order[1] == 1:
-            z_e, y_e, x_e = np.meshgrid(gridbase[-3], gridbase[-2], gridbase[-1], indexing='ij')
-            z_n, y_n, x_n = np.meshgrid(gridbase_n[-3], gridbase_n[-2], gridbase_n[-1], indexing='ij')
+            z_e, y_e, x_e = np.meshgrid(gridbase[-1], gridbase[-2], gridbase[-3], indexing='ij')
+            z_n, y_n, x_n = np.meshgrid(gridbase_n[-1], gridbase_n[-2], gridbase_n[-3], indexing='ij')
         else:
-            z_e, x_e, y_e = np.meshgrid(gridbase[-3], gridbase[-1], gridbase[-2], indexing='ij')
-            z_n, x_n, y_n = np.meshgrid(gridbase_n[-3], gridbase_n[-1], gridbase_n[-2], indexing='ij')
+            z_e, x_e, y_e = np.meshgrid(gridbase[-1], gridbase[-3], gridbase[-2], indexing='ij')
+            z_n, x_n, y_n = np.meshgrid(gridbase_n[-1], gridbase_n[-3], gridbase_n[-2], indexing='ij')
     elif order[0] == 1:
         if order[1] == 0:
             y_e, z_e, x_e = np.meshgrid(gridbase[-2], gridbase[-3], gridbase[-1], indexing='ij')
