@@ -1,0 +1,7 @@
+run: RBC_G8_DNS/config/case03_005_e/
+domain_init_kwargs: {'domain_range': {'t': (0, 3.0), 'x': (0, 0.2), 'y': (0, 0.2), 'z': (0, 0.2)}, 'grid_size': [101, 201, 201,201], 'bound_keys': ['bczu', 'bczl']}
+data_init_kwargs: {'path': '/RBC_G8_DNS/newdata/case03_005/', 'data_keys': ['pos', 'vel', 'Tx', 'Ty'], 'viscosity': 1.5314e-5, 'u_ref': 0.12, 'v_ref': 0.13, 'w_ref': 0.15, 'p_ref': 0.15, 'T_ref': 6.5}
+network1_init_kwargs: {'key': 0, 'layer_sizes': [4, 400, 400, 400, 400, 400, 400, 400, 400, 400, 400, 400, 400, 400, 400, 400, 5], 'network_name': 'MLP'}
+problem_init_kwargs: {'loss_weights': (1.0, 1.0, 1.0, 1e-06, 1e-06, 1e-06, 1e-06, 1e-03, 1e-03, 1e-02, 1e-06), 'path_s': '/RBC_G8_DNS/newdata/case03_005/'}
+optimization_init_kwargs: {'optimiser': 'soap', 'learning_rate': 0.001, 'decay_step': 16000, 'decay_rate': 0.9, 'n_steps': 100000000, 'save_step': 20000, 'p_batch': 10000, 'e_batch': 10000, 'b_batch': 10000}
+equation_init_kwargs: {'equation1': 'Energy_pure_adi',}
