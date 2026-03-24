@@ -64,6 +64,7 @@ class Data(Database):
     def output_normalize(all_params, data):
         vel_ref_keys = ['u_ref', 'v_ref', 'w_ref']
         vel_ref = {vel_ref_keys[i]:np.max(np.abs(data['vel'][:,i:i+1])) for i in range(len(vel_ref_keys))}
+        print(all_params['data'])
         vel_ref['u_ref'] = all_params['data']['u_ref']
         vel_ref['v_ref'] = all_params['data']['v_ref']
         vel_ref['w_ref'] = all_params['data']['w_ref']

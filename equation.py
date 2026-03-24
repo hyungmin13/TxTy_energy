@@ -110,7 +110,7 @@ class RBC_NS_case(Equation):
         return total_loss
     
     @staticmethod
-    def Loss_report(dynamic_params, all_params, g_batch, particles, particle_vel, e_batch, ev_batch, boundaries, model_fns):
+    def Loss_report(dynamic_params, all_params, g_batch, particles, particle_vel, e_batch, ev_batch, boundaries, model_fns, eT_batch=None):
         def first_order(all_params, g_batch, cotangent, model_fns):
             def u_t(batch):
                 return model_fns(all_params, batch)
@@ -181,7 +181,10 @@ class RBC_NS_case(Equation):
         u_error = jnp.linalg.norm(e_out[:,0:1]*all_params["data"]['u_ref']-ev_batch[:,0:1])/jnp.linalg.norm(ev_batch[:,0:1])
         v_error = jnp.linalg.norm(e_out[:,1:2]*all_params["data"]['v_ref']-ev_batch[:,1:2])/jnp.linalg.norm(ev_batch[:,1:2])
         w_error = jnp.linalg.norm(e_out[:,2:3]*all_params["data"]['w_ref']-ev_batch[:,2:3])/jnp.linalg.norm(ev_batch[:,2:3])
-
+        try:
+            T_error = jnp.linalg.norm(e_out[:,4]*all_params["data"]['T_ref']-eT_batch)/jnp.linalg.norm(ev_batch)
+        except:
+            T_error = 0.0
         loss_con = ux + vy + wz
         loss_con = jnp.mean(loss_con**2)
         loss_NS1 = ut + u*ux + v*uy + w*uz + px - all_params["data"]["viscosity"]*(uxx+uyy+uzz)
@@ -194,7 +197,7 @@ class RBC_NS_case(Equation):
         total_loss = weights[0]*loss_u + weights[1]*loss_v + weights[2]*loss_w + \
                     weights[3]*loss_con + weights[4]*loss_NS1 + weights[5]*loss_NS2 + \
                     weights[6]*loss_NS3 
-        return total_loss, loss_u, loss_v, loss_w, loss_con, loss_NS1, loss_NS2, loss_NS3, 0.0, 0.0, 0.0, u_error, v_error, w_error, 0.0
+        return total_loss, loss_u, loss_v, loss_w, loss_con, loss_NS1, loss_NS2, loss_NS3, 0.0, 0.0, 0.0, u_error, v_error, w_error, T_error
 
 class RBC_NS_case_sep(Equation):
     def __init__(self, all_params):
@@ -2106,7 +2109,7 @@ class Energy_pure_adi(Equation):
                     weights[10]*(loss_T_bu + loss_T_bb)
         return total_loss
     @staticmethod
-    def Loss_report(dynamic_params, all_params, g_batch, particles, particle_vel, e_batch, ev_batch, particle_Tx, particle_Ty, boundaries, model_fns):
+    def Loss_report(dynamic_params, all_params, g_batch, particles, particle_vel, e_batch, ev_batch, particle_Tx, particle_Ty, boundaries, model_fns, eT_batch=None):
         def first_order(all_params, g_batch, cotangent, model_fns):
             def u_t(batch):
                 return model_fns(all_params, batch)
@@ -2190,8 +2193,6 @@ class Energy_pure_adi(Equation):
         
         loss_T_bb = all_params["data"]['T_ref']*b_out2[:,4:5] - all_params["data"]['T_ref']
         loss_T_bb = jnp.mean(loss_T_bb**2)
-        print(all_params["data"]['u_ref']*p_out[:,0:1])
-        print(particle_vel[:,0:1])
         loss_con = ux + vy + wz
         loss_con = jnp.mean(loss_con**2)
         loss_NS1 = ut + u*ux + v*uy + w*uz + px - all_params["data"]["viscosity"]*(uxx+uyy+uzz)
@@ -2213,9 +2214,12 @@ class Energy_pure_adi(Equation):
         u_error = jnp.linalg.norm(e_out[:,0:1]*all_params["data"]['u_ref']-ev_batch[:,0:1])/jnp.linalg.norm(ev_batch[:,0:1])
         v_error = jnp.linalg.norm(e_out[:,1:2]*all_params["data"]['v_ref']-ev_batch[:,1:2])/jnp.linalg.norm(ev_batch[:,1:2])
         w_error = jnp.linalg.norm(e_out[:,2:3]*all_params["data"]['w_ref']-ev_batch[:,2:3])/jnp.linalg.norm(ev_batch[:,2:3])
-        #T_error = jnp.linalg.norm(e_out[:,4]*all_params["data"]['T_ref']-eT_batch)/jnp.linalg.norm(eT_batch)
+        try:
+            T_error = jnp.linalg.norm(e_out[:,4]*all_params["data"]['T_ref']-eT_batch)/jnp.linalg.norm(eT_batch)
+        except:
+            T_error = 0.0
         total_loss = weights[0]*loss_u + weights[1]*loss_v + weights[2]*loss_w + \
                     weights[3]*loss_con + weights[4]*loss_NS1 + weights[5]*loss_NS2 + weights[6]*loss_NS3 + \
                     weights[7]*loss_Tx + weights[8]*loss_Ty + weights[9]*loss_ENR + \
                     weights[10]*(loss_T_bu + loss_T_bb)
-        return total_loss, loss_u, loss_v, loss_w, loss_con, loss_NS1, loss_NS2, loss_NS3, loss_ENR, loss_T_bu, loss_T_bb, loss_Tx, loss_Ty, u_error, v_error, w_error, 0.0
+        return total_loss, loss_u, loss_v, loss_w, loss_con, loss_NS1, loss_NS2, loss_NS3, loss_ENR, loss_T_bu, loss_T_bb, loss_Tx, loss_Ty, u_error, v_error, w_error, T_error

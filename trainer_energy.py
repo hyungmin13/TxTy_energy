@@ -223,29 +223,19 @@ class PINN(PINNbase):
             print(np.max(e_batch_pos[:,0]), np.max(e_batch_pos[:,1]), np.max(e_batch_pos[:,2]), np.max(e_batch_pos[:,3]))
             if 'T' in valid_data.keys():
                 e_batch_T = random.choice(e_key, valid_data['T'], shape = (self.c.optimization_init_kwargs["e_batch"],))
-                Losses = report_fn(dynamic_params, all_params, g_batch, p_batch, v_batch, e_batch_pos, e_batch_vel, e_batch_T, Tx_batch, Ty_batch, b_batch, model_fns)
+                Losses = report_fn(dynamic_params, all_params, g_batch, p_batch, v_batch, e_batch_pos, e_batch_vel, Tx_batch, Ty_batch, b_batch, model_fns, e_batch_T)
             else:
                 #e_batch_T = random.choice(e_key, valid_data['T'], shape = (self.c.optimization_init_kwargs["e_batch"],))
                 Losses = report_fn(dynamic_params, all_params, g_batch, p_batch, v_batch, e_batch_pos, e_batch_vel, Tx_batch, Ty_batch, b_batch, model_fns)
 
-            if 'T' in valid_data.keys():
-                print(f"step_num : {i:<{12}} total_loss : {Losses[0]:<{12}.{5}} u_loss : {Losses[1]:<{12}.{5}} "
-                      f"v_loss : {Losses[2]:<{12}.{5}} w_loss : {Losses[3]:<{12}.{5}} con_loss : {Losses[4]:<{12}.{5}} "
-                      f"NS1_loss : {Losses[5]:<{12}.{5}} NS2_loss : {Losses[6]:<{12}.{5}} NS3_loss : {Losses[7]:<{12}.{5}} Eng_loss : {Losses[8]:<{12}.{5}} "
-                      f"Tbu_loss : {Losses[9]:<{12}.{5}} Tbb_loss : {Losses[10]:<{12}.{5}} Tx_loss : {Losses[11]:<{12}.{5}} Ty_loss : {Losses[12]:<{12}.{5}}"
-                      f"u_error : {Losses[13]:<{12}.{5}} v_error : {Losses[14]:<{12}.{5}} w_error : {Losses[15]:<{12}.{5}} T_error : {Losses[16]:<{12}.{5}}")
-                with open(self.c.report_out_dir + "reports.txt", "a") as f:
-                    f.write(f"{i:<{12}} {Losses[0]:<{12}.{5}} {Losses[1]:<{12}.{5}} {Losses[2]:<{12}.{5}} {Losses[3]:<{12}.{5}} {Losses[4]:<{12}.{5}} "
-                            f"{Losses[5]:<{12}.{5}} {Losses[6]:<{12}.{5}} {Losses[7]:<{12}.{5}} {Losses[8]:<{12}.{5}} {Losses[13]:<{12}.{5}} {Losses[14]:<{12}.{5}} {Losses[15]:<{12}.{5}} {Losses[16]:<{12}.{5}}\n")
-            else:
-                print(f"step_num : {i:<{12}} total_loss : {Losses[0]:<{12}.{5}} u_loss : {Losses[1]:<{12}.{5}} "
-                      f"v_loss : {Losses[2]:<{12}.{5}} w_loss : {Losses[3]:<{12}.{5}} con_loss : {Losses[4]:<{12}.{5}} "
-                      f"NS1_loss : {Losses[5]:<{12}.{5}} NS2_loss : {Losses[6]:<{12}.{5}} NS3_loss : {Losses[7]:<{12}.{5}} Eng_loss : {Losses[8]:<{12}.{5}} "
-                      f"Tbu_loss : {Losses[9]:<{12}.{5}} Tbb_loss : {Losses[10]:<{12}.{5}} Tx_loss : {Losses[11]:<{12}.{5}} Ty_loss : {Losses[12]:<{12}.{5}}"
-                      f"u_error : {Losses[13]:<{12}.{5}} v_error : {Losses[14]:<{12}.{5}} w_error : {Losses[15]:<{12}.{5}} T_error : {Losses[16]:<{12}.{5}}")
-                with open(self.c.report_out_dir + "reports.txt", "a") as f:
-                    f.write(f"{i:<{12}} {Losses[0]:<{12}.{5}} {Losses[1]:<{12}.{5}} {Losses[2]:<{12}.{5}} {Losses[3]:<{12}.{5}} {Losses[4]:<{12}.{5}} "
-                            f"{Losses[5]:<{12}.{5}} {Losses[6]:<{12}.{5}} {Losses[7]:<{12}.{5}} {Losses[8]:<{12}.{5}} {Losses[13]:<{12}.{5}} {Losses[14]:<{12}.{5}} {Losses[15]:<{12}.{5}} {Losses[16]:<{12}.{5}}\n")
+            print(f"step_num : {i:<{12}} total_loss : {Losses[0]:<{12}.{5}} u_loss : {Losses[1]:<{12}.{5}} "
+                    f"v_loss : {Losses[2]:<{12}.{5}} w_loss : {Losses[3]:<{12}.{5}} con_loss : {Losses[4]:<{12}.{5}} "
+                    f"NS1_loss : {Losses[5]:<{12}.{5}} NS2_loss : {Losses[6]:<{12}.{5}} NS3_loss : {Losses[7]:<{12}.{5}} Eng_loss : {Losses[8]:<{12}.{5}} "
+                    f"Tbu_loss : {Losses[9]:<{12}.{5}} Tbb_loss : {Losses[10]:<{12}.{5}} Tx_loss : {Losses[11]:<{12}.{5}} Ty_loss : {Losses[12]:<{12}.{5}}"
+                    f"u_error : {Losses[13]:<{12}.{5}} v_error : {Losses[14]:<{12}.{5}} w_error : {Losses[15]:<{12}.{5}} T_error : {Losses[16]:<{12}.{5}}")
+            with open(self.c.report_out_dir + "reports.txt", "a") as f:
+                f.write(f"{i:<{12}} {Losses[0]:<{12}.{5}} {Losses[1]:<{12}.{5}} {Losses[2]:<{12}.{5}} {Losses[3]:<{12}.{5}} {Losses[4]:<{12}.{5}} "
+                        f"{Losses[5]:<{12}.{5}} {Losses[6]:<{12}.{5}} {Losses[7]:<{12}.{5}} {Losses[8]:<{12}.{5}} {Losses[13]:<{12}.{5}} {Losses[14]:<{12}.{5}} {Losses[15]:<{12}.{5}} {Losses[16]:<{12}.{5}}\n")
             f.close()
         return
     def report2(self, i, report_fn, dynamic_params, dynamic_params2, all_params, p_batch, v_batch, g_batch, b_batch, valid_data, e_batch_key, save_step, model_fns, model_fns2):
@@ -258,26 +248,19 @@ class PINN(PINNbase):
             e_batch_vel = random.choice(e_key, valid_data['vel'], shape = (self.c.optimization_init_kwargs["e_batch"],))
             if 'T' in valid_data.keys():
                 e_batch_T = random.choice(e_key, valid_data['T'], shape = (self.c.optimization_init_kwargs["e_batch"],))
-                Losses = report_fn(dynamic_params, dynamic_params2, all_params, g_batch, p_batch, v_batch, e_batch_pos, e_batch_vel, e_batch_T, b_batch, model_fns, model_fns2)
+                Losses = report_fn(dynamic_params, dynamic_params2, all_params, g_batch, p_batch, v_batch, e_batch_pos, e_batch_vel, b_batch, model_fns, model_fns2, e_batch_T)
             else:
                 Losses = report_fn(dynamic_params, dynamic_params2, all_params, g_batch, p_batch, v_batch, e_batch_pos, e_batch_vel, b_batch, model_fns, model_fns2)
-            if 'T' in valid_data.keys():
-                print(f"step_num : {i:<{12}} total_loss : {Losses[0]:<{12}.{5}} u_loss : {Losses[1]:<{12}.{5}} "
-                      f"v_loss : {Losses[2]:<{12}.{5}} w_loss : {Losses[3]:<{12}.{5}} con_loss : {Losses[4]:<{12}.{5}} "
-                      f"NS1_loss : {Losses[5]:<{12}.{5}} NS2_loss : {Losses[6]:<{12}.{5}} NS3_loss : {Losses[7]:<{12}.{5}} Eng_loss : {Losses[8]:<{12}.{5}} "
-                      f"Tbu_loss : {Losses[9]:<{12}.{5}} Tbb_loss : {Losses[10]:<{12}.{5}} "
-                      f"u_error : {Losses[11]:<{12}.{5}} v_error : {Losses[12]:<{12}.{5}} w_error : {Losses[13]:<{12}.{5}} T_error : {Losses[14]:<{12}.{5}}")
-                with open(self.c.report_out_dir + "reports.txt", "a") as f:
-                     f.write(f"{i:<{12}} {Losses[0]:<{12}.{5}} {Losses[1]:<{12}.{5}} {Losses[2]:<{12}.{5}} {Losses[3]:<{12}.{5}} {Losses[4]:<{12}.{5}} "
-                            f"{Losses[5]:<{12}.{5}} {Losses[6]:<{12}.{5}} {Losses[7]:<{12}.{5}} {Losses[8]:<{12}.{5}} {Losses[11]:<{12}.{5}} {Losses[12]:<{12}.{5}} {Losses[13]:<{12}.{5}} {Losses[14]:<{12}.{5}}\n")
-            else:
-                print(f"step_num : {i:<{12}} total_loss : {Losses[0]:<{12}.{5}} u_loss : {Losses[1]:<{12}.{5}} "
-                      f"v_loss : {Losses[2]:<{12}.{5}} w_loss : {Losses[3]:<{12}.{5}} con_loss : {Losses[4]:<{12}.{5}} "
-                      f"NS1_loss : {Losses[5]:<{12}.{5}} NS2_loss : {Losses[6]:<{12}.{5}} NS3_loss : {Losses[7]:<{12}.{5}} "
-                      f"u_error : {Losses[8]:<{12}.{5}} v_error : {Losses[9]:<{12}.{5}} w_error : {Losses[10]:<{12}.{5}}")
-                with open(self.c.report_out_dir + "reports.txt", "a") as f:
+
+            print(f"step_num : {i:<{12}} total_loss : {Losses[0]:<{12}.{5}} u_loss : {Losses[1]:<{12}.{5}} "
+                    f"v_loss : {Losses[2]:<{12}.{5}} w_loss : {Losses[3]:<{12}.{5}} con_loss : {Losses[4]:<{12}.{5}} "
+                    f"NS1_loss : {Losses[5]:<{12}.{5}} NS2_loss : {Losses[6]:<{12}.{5}} NS3_loss : {Losses[7]:<{12}.{5}} Eng_loss : {Losses[8]:<{12}.{5}} "
+                    f"Tbu_loss : {Losses[9]:<{12}.{5}} Tbb_loss : {Losses[10]:<{12}.{5}} "
+                    f"u_error : {Losses[11]:<{12}.{5}} v_error : {Losses[12]:<{12}.{5}} w_error : {Losses[13]:<{12}.{5}} T_error : {Losses[14]:<{12}.{5}}")
+            with open(self.c.report_out_dir + "reports.txt", "a") as f:
                     f.write(f"{i:<{12}} {Losses[0]:<{12}.{5}} {Losses[1]:<{12}.{5}} {Losses[2]:<{12}.{5}} {Losses[3]:<{12}.{5}} {Losses[4]:<{12}.{5}} "
-                            f"{Losses[5]:<{12}.{5}} {Losses[6]:<{12}.{5}} {0.0:<{12}.{5}} {0.0:<{12}.{5}} {0.0:<{12}.{5}} {Losses[8]:<{12}.{5}} {Losses[9]:<{12}.{5}} {Losses[10]:<{12}.{5}} {0.0:<{12}.{5}}\n")
+                        f"{Losses[5]:<{12}.{5}} {Losses[6]:<{12}.{5}} {Losses[7]:<{12}.{5}} {Losses[8]:<{12}.{5}} {Losses[11]:<{12}.{5}} {Losses[12]:<{12}.{5}} {Losses[13]:<{12}.{5}} {Losses[14]:<{12}.{5}}\n")
+
             f.close()
         return
 #%%
