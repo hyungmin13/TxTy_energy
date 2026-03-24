@@ -64,177 +64,19 @@ class Data(Database):
     def output_normalize(all_params, data):
         vel_ref_keys = ['u_ref', 'v_ref', 'w_ref']
         vel_ref = {vel_ref_keys[i]:np.max(np.abs(data['vel'][:,i:i+1])) for i in range(len(vel_ref_keys))}
-        vel_ref['p_ref'] = vel_ref['u_ref']
-        vel_ref['T_ref'] = 6.5
+        vel_ref['u_ref'] = all_params['data']['u_ref']
+        vel_ref['v_ref'] = all_params['data']['v_ref']
+        vel_ref['w_ref'] = all_params['data']['w_ref']
+        try:
+            vel_ref['p_ref'] = all_params['data']['p_ref']
+        except:
+            print('there is no p_ref')
+        try:
+            vel_ref['T_ref'] = all_params['data']['T_ref']
+        except:
+            print('there is no T_ref')
         all_params["data"].update(vel_ref)
         return all_params
-    """
-    @staticmethod
-    def bound_sampler(all_params, domain_range, seed, num, time):
-        bound_keys = all_params["data"]["bound_keys"]
-        data_keys = all_params["data"]["data_keys"]
-        np.random.seed(seed)
-        seeds = np.random.randint(0,1000,2*len(bound_keys))
-        total_bound = {}
-        for i,key in enumerate(bound_keys.keys()):
-            np.random.seed(seeds[i])
-            nx = np.random.uniform(*domain_range['x'], bound_keys[key][-1])
-            np.random.seed(seeds[2*i])
-            ny = np.random.uniform(*domain_range['y'], bound_keys[key][-1])
-            np.random.seed(seeds[3*i])
-            nz = np.random.uniform(*domain_range['z'], bound_keys[key][-1])
- 
-            if key == 'x':
-                temp = []
-                if bound_keys[key][0]:
-                    temp_ = np.column_stack([np.zeros(bound_keys[key][-1])+time,
-                                            np.zeros(bound_keys[key][-1]+domain_range['x'][0]),
-                                            ny,
-                                            nz])
-                    temp.append(temp_)
-                if bound_keys[key][1]:
-                    temp_ = np.column_stack([np.zeros(bound_keys[key][-1])+time,
-                                            np.zeros(bound_keys[key][-1]+domain_range['x'][1]),
-                                            ny,
-                                            nz])
-                    temp.append(temp_)
-                if len(temp) > 1:
-                    total_bound[bound_keys[key]] = np.concatenate(temp, 0)
-                elif len(temp) > 0:
-                    total_bound[bound_keys[key]] = temp[0]
-                else:
-                    total_bound[bound_keys[key]] = None
-            if key == 'y':
-                temp = []
-                if bound_keys[key][0]:
-                    temp_ = np.column_stack([np.zeros(bound_keys[key][-1])+time,
-                                            nx,
-                                            np.zeros(bound_keys[key][-1]+domain_range['y'][0]),
-                                            nz])
-                    temp.append(temp_)
-                if bound_keys[key][1]:
-                    temp_ = np.column_stack([np.zeros(bound_keys[key][-1])+time,
-                                            nx,
-                                            np.zeros(bound_keys[key][-1]+domain_range['y'][1]),
-                                            nz])
-                    temp.append(temp_)
-                if len(temp) > 1:
-                    total_bound[bound_keys[key]] = np.concatenate(temp, 0)
-                elif len(temp) > 0:
-                    total_bound[bound_keys[key]] = temp[0]
-                else:
-                    total_bound[bound_keys[key]] = None
-            if key == 'z':
-                temp = []
-                if bound_keys[key][0]:
-                    temp_ = np.column_stack([np.zeros(bound_keys[key][-1])+time,
-                                            nx,
-                                            ny,
-                                            np.zeros(bound_keys[key][-1]+domain_range['z'][0])])
-                    temp.append(temp_)
-                if bound_keys[key][1]:
-                    temp_ = np.column_stack([np.zeros(bound_keys[key][-1])+time,
-                                            nx,
-                                            ny,
-                                            np.zeros(bound_keys[key][-1]+domain_range['z'][1])])
-                    temp.append(temp_)
-                if len(temp) > 1:
-                    total_bound[bound_keys[key]] = np.concatenate(temp, 0)
-                elif len(temp) > 0:
-                    total_bound[bound_keys[key]] = temp[0]
-                else:
-                    total_bound[bound_keys[key]] = None
-        if 'acc' in data_keys:
-            for key in bound_keys.keys():
-                if total_bound[key]:
-                    total_bound[key] = np.concatenate([total_bound[key],
-                                                        np.zeros((total_bound[key].shape[0],3))],1)
-        if 'T' in data_keys:
-            for key in bound_keys.keys():
-                if total_bound[key]:
-                    total_bound[key] = np.concatenate([total_bound[key],
-                                                        np.zeros((total_bound[key].shape[0],1))],1)
-        
-            if bound_keys[key][0]:
-                total_bound[bound_key] = 
-        for i, bound_key in enumerate(bound_keys):
-            np.random.seed(seeds[i])
-            nx = np.random.uniform(*domain_range['x'], num[i])
-            np.random.seed(seeds[2*i])
-            ny = np.random.uniform(*domain_range['y'], num[i])
-            
-            if 'acc' in all_params["data"]["data_keys"]:
-                if 'T' in all_params["data"]["data_keys"]:
-                    if bound_key == 'bczl':
-                        total_bound[bound_key] = np.column_stack([np.zeros(num[i])+time,
-                                                                np.random.uniform(*domain_range['x'], num[i]),
-                                                                np.random.uniform(*domain_range['y'], num[i]),
-                                                                np.zeros(num[i]),
-                                                                np.zeros(num[i]),
-                                                                np.zeros(num[i]),
-                                                                np.zeros(num[i]),
-                                                                np.zeros(num[i]),
-                                                                np.zeros(num[i]),
-                                                                np.zeros(num[i]),
-                                                                np.zeros(num[i])-0.5])
-                    elif bound_key == 'bczu':
-                        total_bound[bound_key] = np.column_stack([np.zeros(num[i])+time,
-                                                                np.random.uniform(*domain_range['x'], num[i]),
-                                                                np.random.uniform(*domain_range['y'], num[i]),
-                                                                np.ones(num[i]),
-                                                                np.zeros(num[i]),
-                                                                np.zeros(num[i]),
-                                                                np.zeros(num[i]),
-                                                                np.zeros(num[i]),
-                                                                np.zeros(num[i]),
-                                                                np.zeros(num[i]),
-                                                                np.zeros(num[i])+0.5])
-                else:
-                    if bound_key == 'bczl':
-                        total_bound[bound_key] = np.column_stack([np.zeros(num[i])+time,
-                                                                np.random.uniform(*domain_range['x'], num[i]),
-                                                                np.random.uniform(*domain_range['y'], num[i]),
-                                                                np.zeros(num[i]),
-                                                                np.zeros(num[i]),
-                                                                np.zeros(num[i]),
-                                                                np.zeros(num[i]),
-                                                                np.zeros(num[i]),
-                                                                np.zeros(num[i]),
-                                                                np.zeros(num[i])])
-                    elif bound_key == 'bczu':
-                        total_bound[bound_key] = np.column_stack([np.zeros(num[i])+time,
-                                                                np.random.uniform(*domain_range['x'], num[i]),
-                                                                np.random.uniform(*domain_range['y'], num[i]),
-                                                                np.ones(num[i]),
-                                                                np.zeros(num[i]),
-                                                                np.zeros(num[i]),
-                                                                np.zeros(num[i]),
-                                                                np.zeros(num[i]),
-                                                                np.zeros(num[i]),
-                                                                np.zeros(num[i])])
-            else:
-                if 'T' in all_params["data"]["data_keys"]:
-                    if bound_key == 'bczl':
-                        total_bound[bound_key] = np.column_stack([np.zeros(num[i])+time,
-                                                                np.random.uniform(*domain_range['x'], num[i]),
-                                                                np.random.uniform(*domain_range['y'], num[i]),
-                                                                np.zeros(num[i]),
-                                                                np.zeros(num[i]),
-                                                                np.zeros(num[i]),
-                                                                np.zeros(num[i]),
-                                                                np.zeros(num[i])-0.5])
-                    elif bound_key == 'bczu':
-                        total_bound[bound_key] = np.column_stack([np.zeros(num[i])+time,
-                                                                np.random.uniform(*domain_range['x'], num[i]),
-                                                                np.random.uniform(*domain_range['y'], num[i]),
-                                                                np.ones(num[i]),
-                                                                np.zeros(num[i]),
-                                                                np.zeros(num[i]),
-                                                                np.zeros(num[i]),
-                                                                np.zeros(num[i])+0.5])
-        
-        return total_bound
-    """
 
     @staticmethod
     def train_data(all_params):
@@ -254,21 +96,6 @@ class Data(Database):
 
         for t, filename in enumerate(filenames):
             all_data_ = Data.data_load_npy(filename, data_keys)
-            """    
-            if "bound_keys" in list(all_params["data"].keys()):
-                np.random.seed(seeds[t])
-                total_bound = Data.bound_sampler(all_params, domain_range, seeds[t], all_params["data"]['bound_numbers'], time = all_data_['pos'][0,0])
-                for bound_key in bound_keys:
-                    all_data_['pos'] = np.concatenate([all_data_['pos'], total_bound[bound_key][:,0:4]], 0)
-                    all_data_['vel'] = np.concatenate([all_data_['vel'], total_bound[bound_key][:,4:7]], 0)
-                    if 'acc' in data_keys:
-                        all_data_['acc'] = np.concatenate([all_data_['acc'], total_bound[bound_key][:,7:10]], 0)
-                        if 'T' in data_keys:
-                            all_data_['T'] = np.concatenate([all_data_['T'], total_bound[bound_key][:,10:11]], 0)
-                    else:
-                        if 'T' in data_keys:
-                            all_data_['T'] = np.concatenate([all_data_['T'], total_bound[bound_key][:,7:8]], 0)                        
-            """
             for i in range(len(data_keys)): datas[data_keys[i]].append(all_data_[data_keys[i]])
         for j in range(len(data_keys)): datas[data_keys[j]] = np.concatenate(datas[data_keys[j]], 0, dtype=np.float64)
         datas = Data.domain_filter(datas, data_keys, domain_range)

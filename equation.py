@@ -110,7 +110,7 @@ class RBC_NS_case(Equation):
         return total_loss
     
     @staticmethod
-    def Loss_report(dynamic_params, all_params, g_batch, particles, particle_vel, e_batch, ev_batch, eT_batch, boundaries, model_fns):
+    def Loss_report(dynamic_params, all_params, g_batch, particles, particle_vel, e_batch, ev_batch, boundaries, model_fns):
         def first_order(all_params, g_batch, cotangent, model_fns):
             def u_t(batch):
                 return model_fns(all_params, batch)
@@ -2190,7 +2190,8 @@ class Energy_pure_adi(Equation):
         
         loss_T_bb = all_params["data"]['T_ref']*b_out2[:,4:5] - all_params["data"]['T_ref']
         loss_T_bb = jnp.mean(loss_T_bb**2)
-
+        print(all_params["data"]['u_ref']*p_out[:,0:1])
+        print(particle_vel[:,0:1])
         loss_con = ux + vy + wz
         loss_con = jnp.mean(loss_con**2)
         loss_NS1 = ut + u*ux + v*uy + w*uz + px - all_params["data"]["viscosity"]*(uxx+uyy+uzz)
