@@ -341,18 +341,18 @@ def Tecplotfile_gen(c, path, name, all_params, domain_range, output_shape, order
             z_n, x_n, y_n = np.meshgrid(gridbase_n[-1], gridbase_n[-3], gridbase_n[-2], indexing='ij')
     elif order[0] == 1:
         if order[1] == 0:
-            y_e, z_e, x_e = np.meshgrid(gridbase[-2], gridbase[-3], gridbase[-1], indexing='ij')
-            y_n, z_n, x_n = np.meshgrid(gridbase_n[-2], gridbase_n[-3], gridbase_n[-1], indexing='ij')
+            y_e, z_e, x_e = np.meshgrid(gridbase[-2], gridbase[-1], gridbase[-3], indexing='ij')
+            y_n, z_n, x_n = np.meshgrid(gridbase_n[-2], gridbase_n[-1], gridbase_n[-3], indexing='ij')
         else:
-            y_e, x_e, z_e = np.meshgrid(gridbase[-2], gridbase[-1], gridbase[-3], indexing='ij')
-            y_n, x_n, z_n = np.meshgrid(gridbase_n[-2], gridbase_n[-1], gridbase_n[-3], indexing='ij')
+            y_e, x_e, z_e = np.meshgrid(gridbase[-2], gridbase[-3], gridbase[-1], indexing='ij')
+            y_n, x_n, z_n = np.meshgrid(gridbase_n[-2], gridbase_n[-3], gridbase_n[-1], indexing='ij')
     elif order[0] == 2:
         if order[1] == 0:
-            x_e, z_e, y_e = np.meshgrid(gridbase[-1], gridbase[-3], gridbase[-2], indexing='ij')
-            x_n, z_n, y_n = np.meshgrid(gridbase_n[-1], gridbase_n[-3], gridbase_n[-2], indexing='ij')
+            x_e, z_e, y_e = np.meshgrid(gridbase[-3], gridbase[-1], gridbase[-2], indexing='ij')
+            x_n, z_n, y_n = np.meshgrid(gridbase_n[-3], gridbase_n[-1], gridbase_n[-2], indexing='ij')
         else:
-            x_e, y_e, z_e = np.meshgrid(gridbase[-1], gridbase[-2], gridbase[-3], indexing='ij')
-            x_n, y_n, z_n = np.meshgrid(gridbase_n[-1], gridbase_n[-2], gridbase_n[-3], indexing='ij')   
+            x_e, y_e, z_e = np.meshgrid(gridbase[-3], gridbase[-2], gridbase[-1], indexing='ij')
+            x_n, y_n, z_n = np.meshgrid(gridbase_n[-3], gridbase_n[-2], gridbase_n[-1], indexing='ij')   
     t_e = np.zeros(output_shape[1:]) + gridbase[0][timestep]
     t_n = np.zeros(output_shape[1:]) + gridbase_n[0][timestep]
     eval_grid = np.concatenate([t_n.reshape(-1,1), x_n.reshape(-1,1), y_n.reshape(-1,1), z_n.reshape(-1,1)], axis=1)
