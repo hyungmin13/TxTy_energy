@@ -93,7 +93,7 @@ class PINN(PINNbase):
         model_fn = self.c.network1.network_fn
         equation_fn = self.c.equation1.Loss
         report_fn = self.c.equation1.Loss_report
-
+        #print('check1')
         if "network2" in all_params.keys():
             model_state2 = optimiser.init(all_params["network2"]["layers"])
             optimiser_fn2 = optimiser.update
@@ -108,7 +108,7 @@ class PINN(PINNbase):
         #    model = Model(all_params['network']['layers'], model_fn)
         #    all_params["network"]["layers"] = from_state_dict(model, model_params).params
         dynamic_param = all_params["network1"].pop("layers")
-
+        
         if "network2" in all_params.keys():
             dynamic_param2 = all_params["network2"].pop("layers")
         valid_data = self.c.problem.exact_solution(all_params.copy())
@@ -151,7 +151,10 @@ class PINN(PINNbase):
         grids['eqns']['x'] = np.unique(valid_data['pos'][::2,1:2])
         grids['eqns']['y'] = np.unique(valid_data['pos'][::2,2:3])
         grids['eqns']['z'] = np.unique(valid_data['pos'][:,3:4])
-
+        try:
+            print('T_ref : ', all_params["data"]['T_ref'])
+        except:
+            print('no T_ref')
         g_batch = jnp.stack([random.choice(keys_next[k+1], 
                                            grids['eqns'][arg], 
                                            shape=(self.c.optimization_init_kwargs["e_batch"],)) 
@@ -292,7 +295,7 @@ class PINN(PINNbase):
                 e_batch_T = random.choice(e_key, valid_data['T'], shape = (self.c.optimization_init_kwargs["e_batch"],))
                 Losses = report_fn(dynamic_params, all_params, g_batch, p_batch, v_batch, e_batch_pos, e_batch_vel, e_batch_T, b_batch, model_fns)
             else:
-                Losses = report_fn(dynamic_params, all_params, g_batch, p_batch, v_batch, e_batch_pos, e_batch_vel, b_batch, model_fns)
+                Losses = report_fn(dynamic_params, all_params, g_batch, p_batch, v_batch, e_batch_pos, e_batch_vel, 0.0, b_batch, model_fns)
 
             if 'T' in valid_data.keys():
                 print(f"step_num : {i:<{12}} total_loss : {Losses[0]:<{12}.{5}} u_loss : {Losses[1]:<{12}.{5}} "
@@ -361,10 +364,11 @@ if __name__=="__main__":
     parser.add_argument('-c', '--config', type=str, help='configuration', default='test_txt')
     args = parser.parse_args()
     cur_dir = os.getcwd()
+    print('check1')
     input_txt = cur_dir + '/' + args.config + '.txt' 
     data = parse_tree_structured_txt(input_txt)
     c = Constants(**data)
-
+    print('check2')
     run = PINN(c)
     if os.path.isfile(run.c.model_out_dir+'saved_dic_20000.pkl'):
         print('continuing from last checkpoint')
@@ -375,6 +379,7 @@ if __name__=="__main__":
             model_params = pickle.load(f)
         run.train(num, model_params)
     else:
+        print('check3')
         run.train()
 
     

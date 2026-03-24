@@ -65,7 +65,7 @@ class Data(Database):
         vel_ref_keys = ['u_ref', 'v_ref', 'w_ref']
         vel_ref = {vel_ref_keys[i]:np.max(np.abs(data['vel'][:,i:i+1])) for i in range(len(vel_ref_keys))}
         vel_ref['p_ref'] = vel_ref['u_ref']
-        vel_ref['T_ref'] = 0.5
+        vel_ref['T_ref'] = 6.5
         all_params["data"].update(vel_ref)
         return all_params
     """
