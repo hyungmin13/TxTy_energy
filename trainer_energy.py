@@ -133,8 +133,8 @@ class PINN(PINNbase):
         v_batch = next(v_batches)
         Tx_batch = next(Tx_batches)
         Ty_batch = next(Ty_batches)
-        grids['eqns']['x'] = np.unique(valid_data['pos'][::2,1:2])
-        grids['eqns']['y'] = np.unique(valid_data['pos'][::2,2:3])
+        grids['eqns']['x'] = np.unique(valid_data['pos'][:,1:2])
+        grids['eqns']['y'] = np.unique(valid_data['pos'][:,2:3])
         grids['eqns']['z'] = np.unique(valid_data['pos'][:,3:4])
 
         g_batch = jnp.stack([random.choice(keys_next[k+1], 
@@ -142,20 +142,22 @@ class PINN(PINNbase):
                                            shape=(self.c.optimization_init_kwargs["e_batch"],)) 
                              for k, arg in enumerate(list(all_params["domain"]["domain_range"].keys()))],axis=1)
         b_batches = []
-        grids['bczu']['x'] = np.unique(valid_data['pos'][::2,1:2])
-        grids['bczu']['y'] = np.unique(valid_data['pos'][::2,2:3])
-        grids['bczu']['z'] = np.unique(valid_data['pos'][:,3:4])
-        grids['bczl']['x'] = np.unique(valid_data['pos'][::2,1:2])
-        grids['bczl']['y'] = np.unique(valid_data['pos'][::2,2:3])
-        grids['bczl']['z'] = np.unique(valid_data['pos'][:,3:4])
+        grids['bczu']['x'] = np.unique(valid_data['pos'][:,1:2])
+        grids['bczu']['y'] = np.unique(valid_data['pos'][:,2:3])
+        #grids['bczu']['z'] = np.unique(valid_data['pos'][:,3:4])
+        grids['bczl']['x'] = np.unique(valid_data['pos'][:,1:2])
+        grids['bczl']['y'] = np.unique(valid_data['pos'][:,2:3])
+        #grids['bczl']['z'] = np.unique(valid_data['pos'][:,3:4])
         for b_key in all_params["domain"]["bound_keys"]:
             b_batch = jnp.stack([random.choice(keys_next[k+5], 
                                             grids[b_key][arg], 
                                             shape=(self.c.optimization_init_kwargs["e_batch"],)) 
                                 for k, arg in enumerate(list(all_params["domain"]["domain_range"].keys()))],axis=1)
             b_batches.append(b_batch)
-        print(np.max(grids['eqns']['t']), np.max(grids['eqns']['x']), np.max(grids['eqns']['y']),np.max(grids['eqns']['z']))
+        print(np.max(grids['eqns']['t']), np.max(grids['eqns']['x']), np.max(grids['eqns']['y']),np.min(grids['eqns']['z']))
         print(np.max(p_batch[:,0]), np.max(p_batch[:,1]), np.max(p_batch[:,2]), np.max(p_batch[:,3]))
+        print(np.max(grids['bczu']['t']), np.max(grids['bczu']['x']), np.max(grids['bczu']['y']),np.min(grids['bczu']['z']))
+        print(np.max(grids['bczl']['t']), np.max(grids['bczl']['x']), np.max(grids['bczl']['y']),np.max(grids['bczl']['z']))
         # Initializing the update function
 
         update = PINN_update.lower(model_state, optimiser_fn, equation_fn, dynamic_param, static_params, static_keys, 
