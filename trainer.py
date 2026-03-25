@@ -160,12 +160,12 @@ class PINN(PINNbase):
                                            shape=(self.c.optimization_init_kwargs["e_batch"],)) 
                              for k, arg in enumerate(list(all_params["domain"]["domain_range"].keys()))],axis=1)
         b_batches = []
-        grids['bczu']['x'] = np.unique(valid_data['pos'][::2,1:2])
-        grids['bczu']['y'] = np.unique(valid_data['pos'][::2,2:3])
-        grids['bczu']['z'] = np.unique(valid_data['pos'][:,3:4])
-        grids['bczl']['x'] = np.unique(valid_data['pos'][::2,1:2])
-        grids['bczl']['y'] = np.unique(valid_data['pos'][::2,2:3])
-        grids['bczl']['z'] = np.unique(valid_data['pos'][:,3:4])
+        grids['bczu']['x'] = np.unique(valid_data['pos'][:,1:2])
+        grids['bczu']['y'] = np.unique(valid_data['pos'][:,2:3])
+        #grids['bczu']['z'] = np.unique(valid_data['pos'][:,3:4])
+        grids['bczl']['x'] = np.unique(valid_data['pos'][:,1:2])
+        grids['bczl']['y'] = np.unique(valid_data['pos'][:,2:3])
+        #grids['bczl']['z'] = np.unique(valid_data['pos'][:,3:4])
         for b_key in all_params["domain"]["bound_keys"]:
             b_batch = jnp.stack([random.choice(keys_next[k+5], 
                                             grids[b_key][arg], 

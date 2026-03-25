@@ -2100,7 +2100,7 @@ class Energy_pure_adi(Equation):
         loss_Tx = jnp.mean(loss_Tx**2)
         loss_Ty = all_params["data"]['T_ref']*p_out_y[:,4:5]/all_params["domain"]["domain_range"]["y"][1] - particle_Ty
         loss_Ty = jnp.mean(loss_Ty**2)
-        loss_ENR = Tt + u*Tx + v*Ty + w*Tz - all_params["data"]["viscosity"]*(Txx+Tyy+Tzz)/0.7
+        loss_ENR = Tt + u*Tx + v*Ty + w*Tz - all_params["data"]["viscosity"]*(Txx+Tyy+Tzz)/all_params["data"]['Pr']
         loss_ENR = jnp.mean(loss_ENR**2)
 
         total_loss = weights[0]*loss_u + weights[1]*loss_v + weights[2]*loss_w + \
@@ -2206,10 +2206,10 @@ class Energy_pure_adi(Equation):
         loss_Tx = jnp.mean(loss_Tx**2)
         loss_Ty = all_params["data"]['T_ref']*p_out_y[:,4:5]/all_params["domain"]["domain_range"]["y"][1] - particle_Ty
         loss_Ty = jnp.mean(loss_Ty**2)
-        loss_ENR = Tt + u*Tx + v*Ty + w*Tz - all_params["data"]["viscosity"]*(Txx+Tyy+Tzz)/0.7
+        loss_ENR = Tt + u*Tx + v*Ty + w*Tz - all_params["data"]["viscosity"]*(Txx+Tyy+Tzz)/all_params["data"]['Pr']
         loss_ENR = jnp.mean(loss_ENR**2)
 
-        loss_ENR = Tt + u*Tx + v*Ty + w*Tz - all_params["data"]["viscosity"]*(Txx+Tyy+Tzz)/0.7
+        loss_ENR = Tt + u*Tx + v*Ty + w*Tz - all_params["data"]["viscosity"]*(Txx+Tyy+Tzz)/all_params["data"]['Pr']
         loss_ENR = jnp.mean(loss_ENR**2)
         u_error = jnp.linalg.norm(e_out[:,0:1]*all_params["data"]['u_ref']-ev_batch[:,0:1])/jnp.linalg.norm(ev_batch[:,0:1])
         v_error = jnp.linalg.norm(e_out[:,1:2]*all_params["data"]['v_ref']-ev_batch[:,1:2])/jnp.linalg.norm(ev_batch[:,1:2])
