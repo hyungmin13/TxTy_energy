@@ -209,7 +209,7 @@ class PINN(PINNbase):
                 
                 
                     self.report2(numb+i, report_fn, dynamic_param, dynamic_param2, all_params, p_batch, 
-                                    v_batch, g_batch, b_batch, valid_data, keys_iter[-1], self.c.optimization_init_kwargs["save_step"], model_fn, model_fn2)
+                                    v_batch, g_batch, b_batches, valid_data, keys_iter[-1], self.c.optimization_init_kwargs["save_step"], model_fn, model_fn2)
                     self.save_model2(numb+i, dynamic_param, dynamic_param2, all_params, self.c.optimization_init_kwargs["save_step"], model_fn, model_fn2)
             else:
                 for i in range(self.c.optimization_init_kwargs["n_steps"]):
@@ -232,7 +232,7 @@ class PINN(PINNbase):
                 
                 
                     self.report2(numb+i, report_fn, dynamic_param, dynamic_param2, all_params, p_batch, 
-                                    v_batch, g_batch, b_batch, valid_data, keys_iter[-1], self.c.optimization_init_kwargs["save_step"], model_fn, model_fn2)
+                                    v_batch, g_batch, b_batches, valid_data, keys_iter[-1], self.c.optimization_init_kwargs["save_step"], model_fn, model_fn2)
                     self.save_model2(numb+i, dynamic_param, dynamic_param2, all_params, self.c.optimization_init_kwargs["save_step"], model_fn, model_fn2)
         else:
             print('lets go')
@@ -255,7 +255,7 @@ class PINN(PINNbase):
                 lossval, model_state, dynamic_param = update(model_state, dynamic_param, static_params, g_batch, p_batch, v_batch, b_batches)
             
             
-                self.report(numb+i, report_fn, dynamic_param, all_params, p_batch, v_batch, g_batch, b_batch, valid_data, keys_iter[-1], self.c.optimization_init_kwargs["save_step"], model_fn)
+                self.report(numb+i, report_fn, dynamic_param, all_params, p_batch, v_batch, g_batch, b_batches, valid_data, keys_iter[-1], self.c.optimization_init_kwargs["save_step"], model_fn)
                 self.save_model1(numb+i, dynamic_param, all_params, self.c.optimization_init_kwargs["save_step"], model_fn)
 
     def save_model1(self, i, dynamic_params, all_params, save_step, model_fns):

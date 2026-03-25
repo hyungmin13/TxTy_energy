@@ -159,7 +159,6 @@ class PINN(PINNbase):
         print(np.max(grids['bczu']['t']), np.max(grids['bczu']['x']), np.max(grids['bczu']['y']),np.min(grids['bczu']['z']))
         print(np.max(grids['bczl']['t']), np.max(grids['bczl']['x']), np.max(grids['bczl']['y']),np.max(grids['bczl']['z']))
         # Initializing the update function
-
         update = PINN_update.lower(model_state, optimiser_fn, equation_fn, dynamic_param, static_params, static_keys, 
                                        g_batch, p_batch, v_batch, Tx_batch, Ty_batch, b_batches, model_fn).compile()
         
@@ -187,7 +186,7 @@ class PINN(PINNbase):
                                                          v_batch, Tx_batch, Ty_batch, b_batches)
         
         
-            self.report(numb+i, report_fn, dynamic_param, all_params, p_batch, v_batch, g_batch, Tx_batch, Ty_batch, b_batch, valid_data, keys_iter[-1], self.c.optimization_init_kwargs["save_step"], model_fn)
+            self.report(numb+i, report_fn, dynamic_param, all_params, p_batch, v_batch, g_batch, Tx_batch, Ty_batch, b_batches, valid_data, keys_iter[-1], self.c.optimization_init_kwargs["save_step"], model_fn)
             self.save_model1(numb+i, dynamic_param, all_params, self.c.optimization_init_kwargs["save_step"], model_fn)
 
     def save_model1(self, i, dynamic_params, all_params, save_step, model_fns):
