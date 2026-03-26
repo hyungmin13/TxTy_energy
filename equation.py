@@ -2107,6 +2107,7 @@ class Energy_pure_adi(Equation):
                     weights[3]*loss_con + weights[4]*loss_NS1 + weights[5]*loss_NS2 + weights[6]*loss_NS3 + \
                     weights[7]*loss_Tx + weights[8]*loss_Ty + weights[9]*loss_ENR + \
                     weights[10]*(loss_T_bu + loss_T_bb)
+        #total_loss = loss_Tx
         return total_loss
     @staticmethod
     def Loss_report(dynamic_params, all_params, g_batch, particles, particle_vel, e_batch, ev_batch, particle_Tx, particle_Ty, boundaries, model_fns, eT_batch=None):
@@ -2133,6 +2134,7 @@ class Energy_pure_adi(Equation):
         p_out, p_out_x = first_order(all_params, particles, jnp.tile(jnp.array([[0.0, 1.0, 0.0, 0.0]]),(particles.shape[0],1)),model_fns)
         _, p_out_y = first_order(all_params, particles, jnp.tile(jnp.array([[0.0, 0.0, 1.0, 0.0]]),(particles.shape[0],1)),model_fns)
         #p_out = model_fns(all_params, particles)
+
         b_out1 = model_fns(all_params, boundaries[0])                                                                                  
         b_out2 = model_fns(all_params, boundaries[1])                                                                                  
         e_out = model_fns(all_params, e_batch)
@@ -2190,7 +2192,6 @@ class Energy_pure_adi(Equation):
 
         loss_T_bu = all_params["data"]['T_ref']*b_out1[:,4:5] + all_params["data"]['T_ref']
         loss_T_bu = jnp.mean(loss_T_bu**2)
-        
         loss_T_bb = all_params["data"]['T_ref']*b_out2[:,4:5] - all_params["data"]['T_ref']
         loss_T_bb = jnp.mean(loss_T_bb**2)
         loss_con = ux + vy + wz

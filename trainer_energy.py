@@ -85,7 +85,10 @@ class PINN(PINNbase):
 
         if "network2" in all_params.keys():
             dynamic_param2 = all_params["network2"].pop("layers")
-        valid_data = self.c.problem.exact_solution(all_params.copy())
+        if "path_s" in all_params['problem'].keys():
+            valid_data = self.c.problem.exact_solution(all_params.copy())
+        else:
+            valid_data = train_data.copy()
         if "equation2" in self.c.equation_init_kwargs.keys():
             equation_fn2 = self.c.equation2.Loss
             equation_fn3 = self.c.equation1.TxTy_cal
@@ -111,7 +114,7 @@ class PINN(PINNbase):
         data_v = []
         data_Tx = []
         data_Ty = []
-
+        b_batches = []
         for i in tqdm(range(N_p//self.c.optimization_init_kwargs["p_batch"])):
             batch_p = train_data['pos'][perm_p[i*self.c.optimization_init_kwargs["p_batch"]:(i+1)*self.c.optimization_init_kwargs["p_batch"]],:]
             batch_v = train_data['vel'][perm_p[i*self.c.optimization_init_kwargs["p_batch"]:(i+1)*self.c.optimization_init_kwargs["p_batch"]],:]
@@ -133,31 +136,31 @@ class PINN(PINNbase):
         v_batch = next(v_batches)
         Tx_batch = next(Tx_batches)
         Ty_batch = next(Ty_batches)
-        grids['eqns']['x'] = np.unique(valid_data['pos'][:,1:2])
-        grids['eqns']['y'] = np.unique(valid_data['pos'][:,2:3])
-        grids['eqns']['z'] = np.unique(valid_data['pos'][:,3:4])
+        if "path_s" in all_params['problem'].keys():
+            grids['eqns']['x'] = np.unique(valid_data['pos'][:,1:2])
+            grids['eqns']['y'] = np.unique(valid_data['pos'][:,2:3])
+            grids['eqns']['z'] = np.unique(valid_data['pos'][:,3:4])
+            
+            grids['bczu']['x'] = np.unique(valid_data['pos'][:,1:2])
+            grids['bczu']['y'] = np.unique(valid_data['pos'][:,2:3])
+            grids['bczl']['x'] = np.unique(valid_data['pos'][:,1:2])
+            grids['bczl']['y'] = np.unique(valid_data['pos'][:,2:3])
+        else:
+            print('grid data and boundary data are based on linspace')
 
         g_batch = jnp.stack([random.choice(keys_next[k+1], 
                                            grids['eqns'][arg], 
                                            shape=(self.c.optimization_init_kwargs["e_batch"],)) 
                              for k, arg in enumerate(list(all_params["domain"]["domain_range"].keys()))],axis=1)
-        b_batches = []
-        grids['bczu']['x'] = np.unique(valid_data['pos'][:,1:2])
-        grids['bczu']['y'] = np.unique(valid_data['pos'][:,2:3])
-        #grids['bczu']['z'] = np.unique(valid_data['pos'][:,3:4])
-        grids['bczl']['x'] = np.unique(valid_data['pos'][:,1:2])
-        grids['bczl']['y'] = np.unique(valid_data['pos'][:,2:3])
-        #grids['bczl']['z'] = np.unique(valid_data['pos'][:,3:4])
+
+
         for b_key in all_params["domain"]["bound_keys"]:
             b_batch = jnp.stack([random.choice(keys_next[k+5], 
                                             grids[b_key][arg], 
                                             shape=(self.c.optimization_init_kwargs["e_batch"],)) 
                                 for k, arg in enumerate(list(all_params["domain"]["domain_range"].keys()))],axis=1)
             b_batches.append(b_batch)
-        print(np.max(grids['eqns']['t']), np.max(grids['eqns']['x']), np.max(grids['eqns']['y']),np.min(grids['eqns']['z']))
-        print(np.max(p_batch[:,0]), np.max(p_batch[:,1]), np.max(p_batch[:,2]), np.max(p_batch[:,3]))
-        print(np.max(grids['bczu']['t']), np.max(grids['bczu']['x']), np.max(grids['bczu']['y']),np.min(grids['bczu']['z']))
-        print(np.max(grids['bczl']['t']), np.max(grids['bczl']['x']), np.max(grids['bczl']['y']),np.max(grids['bczl']['z']))
+
         # Initializing the update function
         update = PINN_update.lower(model_state, optimiser_fn, equation_fn, dynamic_param, static_params, static_keys, 
                                        g_batch, p_batch, v_batch, Tx_batch, Ty_batch, b_batches, model_fn).compile()

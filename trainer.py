@@ -111,7 +111,10 @@ class PINN(PINNbase):
         
         if "network2" in all_params.keys():
             dynamic_param2 = all_params["network2"].pop("layers")
-        valid_data = self.c.problem.exact_solution(all_params.copy())
+        if "path_s" in all_params['problem'].keys():
+            valid_data = self.c.problem.exact_solution(all_params.copy())
+        else:
+            valid_data = train_data.copy()
         if "equation2" in self.c.equation_init_kwargs.keys():
             equation_fn2 = self.c.equation2.Loss
             equation_fn3 = self.c.equation1.TxTy_cal
@@ -136,6 +139,7 @@ class PINN(PINNbase):
         perm_p = random.permutation(keys_next[0], N_p)
         data_p = []
         data_v = []
+        b_batches = []
         for i in range(N_p//self.c.optimization_init_kwargs["p_batch"]):
             batch_p = train_data['pos'][perm_p[i*self.c.optimization_init_kwargs["p_batch"]:(i+1)*self.c.optimization_init_kwargs["p_batch"]],:]
             batch_v = train_data['vel'][perm_p[i*self.c.optimization_init_kwargs["p_batch"]:(i+1)*self.c.optimization_init_kwargs["p_batch"]],:]
@@ -147,10 +151,17 @@ class PINN(PINNbase):
         v_batches = itertools.cycle(data_v)
         p_batch = next(p_batches)
         v_batch = next(v_batches)
-
-        grids['eqns']['x'] = np.unique(valid_data['pos'][::2,1:2])
-        grids['eqns']['y'] = np.unique(valid_data['pos'][::2,2:3])
-        grids['eqns']['z'] = np.unique(valid_data['pos'][:,3:4])
+        if "path_s" in all_params['problem'].keys():
+            grids['eqns']['x'] = np.unique(valid_data['pos'][::2,1:2])
+            grids['eqns']['y'] = np.unique(valid_data['pos'][::2,2:3])
+            grids['eqns']['z'] = np.unique(valid_data['pos'][:,3:4])
+            
+            grids['bczu']['x'] = np.unique(valid_data['pos'][:,1:2])
+            grids['bczu']['y'] = np.unique(valid_data['pos'][:,2:3])
+            grids['bczl']['x'] = np.unique(valid_data['pos'][:,1:2])
+            grids['bczl']['y'] = np.unique(valid_data['pos'][:,2:3])
+        else:
+            print('grid data and boundary data are based on linspace')
         try:
             print('T_ref : ', all_params["data"]['T_ref'])
         except:
@@ -159,21 +170,13 @@ class PINN(PINNbase):
                                            grids['eqns'][arg], 
                                            shape=(self.c.optimization_init_kwargs["e_batch"],)) 
                              for k, arg in enumerate(list(all_params["domain"]["domain_range"].keys()))],axis=1)
-        b_batches = []
-        grids['bczu']['x'] = np.unique(valid_data['pos'][:,1:2])
-        grids['bczu']['y'] = np.unique(valid_data['pos'][:,2:3])
-        #grids['bczu']['z'] = np.unique(valid_data['pos'][:,3:4])
-        grids['bczl']['x'] = np.unique(valid_data['pos'][:,1:2])
-        grids['bczl']['y'] = np.unique(valid_data['pos'][:,2:3])
-        #grids['bczl']['z'] = np.unique(valid_data['pos'][:,3:4])
         for b_key in all_params["domain"]["bound_keys"]:
             b_batch = jnp.stack([random.choice(keys_next[k+5], 
                                             grids[b_key][arg], 
                                             shape=(self.c.optimization_init_kwargs["e_batch"],)) 
                                 for k, arg in enumerate(list(all_params["domain"]["domain_range"].keys()))],axis=1)
             b_batches.append(b_batch)
-        print(np.max(grids['eqns']['t']), np.max(grids['eqns']['x']), np.max(grids['eqns']['y']),np.max(grids['eqns']['z']))
-        print(np.max(p_batch[:,0]), np.max(p_batch[:,1]), np.max(p_batch[:,2]), np.max(p_batch[:,3]))
+
         # Initializing the update function
         if "network2" in all_params.keys():
             if "equation2" in self.c.equation_init_kwargs.keys():
@@ -235,7 +238,6 @@ class PINN(PINNbase):
                                     v_batch, g_batch, b_batches, valid_data, keys_iter[-1], self.c.optimization_init_kwargs["save_step"], model_fn, model_fn2)
                     self.save_model2(numb+i, dynamic_param, dynamic_param2, all_params, self.c.optimization_init_kwargs["save_step"], model_fn, model_fn2)
         else:
-            print('lets go')
             for i in range(self.c.optimization_init_kwargs["n_steps"]):
                 keys_next = [next(keys_iter[i]) for i in range(num_keysplit)]
                 p_batch = next(p_batches)
@@ -290,7 +292,6 @@ class PINN(PINNbase):
             e_key = next(e_batch_key)
             e_batch_pos = random.choice(e_key, valid_data['pos'], shape = (self.c.optimization_init_kwargs["e_batch"],))
             e_batch_vel = random.choice(e_key, valid_data['vel'], shape = (self.c.optimization_init_kwargs["e_batch"],))
-            print(np.max(e_batch_pos[:,0]), np.max(e_batch_pos[:,1]), np.max(e_batch_pos[:,2]), np.max(e_batch_pos[:,3]))
             if 'T' in valid_data.keys():
                 e_batch_T = random.choice(e_key, valid_data['T'], shape = (self.c.optimization_init_kwargs["e_batch"],))
                 Losses = report_fn(dynamic_params, all_params, g_batch, p_batch, v_batch, e_batch_pos, e_batch_vel, b_batch, model_fns, e_batch_T)
