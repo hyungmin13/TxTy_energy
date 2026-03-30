@@ -1789,7 +1789,7 @@ class Energy_pure(Equation):
             out_x, out_xx = jax.jvp(u_tt, (g_batch,), (cotangent,))
             return out_x, out_xx
    
-        all_params["network"]["layers"] = dynamic_params
+        all_params["network1"]["layers"] = dynamic_params
         weights = all_params["problem"]["loss_weights"]
         out, out_t = first_order(all_params, g_batch, jnp.tile(jnp.array([[1.0, 0.0, 0.0, 0.0]]),(g_batch.shape[0],1)),model_fns)
         out_x, out_xx = second_order(all_params, g_batch, jnp.tile(jnp.array([[0.0, 1.0, 0.0, 0.0]]),(g_batch.shape[0],1)),model_fns)
@@ -1880,11 +1880,11 @@ class Energy_pure(Equation):
         loss_ENR = jnp.mean(loss_ENR**2)
 
         total_loss = weights[0]*loss_u + weights[1]*loss_v + weights[2]*loss_w + \
-                    weights[3]*loss_Tx + weights[4]*loss_Ty + weights[5]*loss_ENR + \
+                    weights[3]*loss_Tx + weights[4]*loss_Ty + \
                     weights[6]*(loss_T_bu + loss_T_bb)
         return total_loss
     @staticmethod
-    def Loss_report(dynamic_params, all_params, g_batch, particles, particle_vel, boundaries, particle_Tx, particle_Ty, model_fns):
+    def Loss_report(dynamic_params, all_params, g_batch, particles, particle_vel, e_batch, ev_batch, particle_Tx, particle_Ty, boundaries, model_fns, eT_batch=None):
         def first_order(all_params, g_batch, cotangent, model_fns):
             def u_t(batch):
                 return model_fns(all_params, batch)
@@ -1898,7 +1898,7 @@ class Energy_pure(Equation):
                 return jax.jvp(u_t,(batch,), (cotangent, ))[1]
             out_x, out_xx = jax.jvp(u_tt, (g_batch,), (cotangent,))
             return out_x, out_xx
-        all_params["network"]["layers"] = dynamic_params
+        all_params["network1"]["layers"] = dynamic_params
         weights = all_params["problem"]["loss_weights"]
         out, out_t = first_order(all_params, g_batch, jnp.tile(jnp.array([[1.0, 0.0, 0.0, 0.0]]),(g_batch.shape[0],1)),model_fns)
         out_x, out_xx = second_order(all_params, g_batch, jnp.tile(jnp.array([[0.0, 1.0, 0.0, 0.0]]),(g_batch.shape[0],1)),model_fns)
@@ -1910,7 +1910,7 @@ class Energy_pure(Equation):
         #p_out = model_fns(all_params, particles)
         b_out1 = model_fns(all_params, boundaries[0])                                                                                  
         b_out2 = model_fns(all_params, boundaries[1])                                                                                  
-
+        e_out = model_fns(all_params, e_batch)
         u = all_params["data"]['u_ref']*out[:,0:1]
         v = all_params["data"]['v_ref']*out[:,1:2]
         w = all_params["data"]['w_ref']*out[:,2:3]
@@ -1968,7 +1968,8 @@ class Energy_pure(Equation):
         
         loss_T_bb = all_params["data"]['T_ref']*b_out2[:,4:5] - all_params["data"]['T_ref']
         loss_T_bb = jnp.mean(loss_T_bb**2)
-
+        print(all_params["data"]['T_ref']*p_out_x[:,4:5]/all_params["domain"]["domain_range"]["x"][1])
+        print(particle_Tx)
         #loss_con = ux + vy + wz
         #loss_con = jnp.mean(loss_con**2)
         #loss_NS1 = ut + u*ux + v*uy + w*uz + px - all_params["data"]["viscosity"]*(uxx+uyy+uzz)
@@ -1977,7 +1978,13 @@ class Energy_pure(Equation):
         #loss_NS2 = jnp.mean(loss_NS2**2)
         #loss_NS3 = wt + u*wx + v*wy + w*wz + pz - all_params["data"]["viscosity"]*(wxx+wyy+wzz) - T
         #loss_NS3 = jnp.mean(loss_NS3**2)
-
+        u_error = jnp.linalg.norm(e_out[:,0:1]*all_params["data"]['u_ref']-ev_batch[:,0:1])/jnp.linalg.norm(ev_batch[:,0:1])
+        v_error = jnp.linalg.norm(e_out[:,1:2]*all_params["data"]['v_ref']-ev_batch[:,1:2])/jnp.linalg.norm(ev_batch[:,1:2])
+        w_error = jnp.linalg.norm(e_out[:,2:3]*all_params["data"]['w_ref']-ev_batch[:,2:3])/jnp.linalg.norm(ev_batch[:,2:3])
+        try:
+            T_error = jnp.linalg.norm(e_out[:,4]*all_params["data"]['T_ref']-eT_batch)/jnp.linalg.norm(eT_batch)
+        except:
+            T_error = 0.0
         loss_Tx = all_params["data"]['T_ref']*p_out_x[:,4:5]/all_params["domain"]["domain_range"]["x"][1] - particle_Tx
         loss_Tx = jnp.mean(loss_Tx**2)
         loss_Ty = all_params["data"]['T_ref']*p_out_y[:,4:5]/all_params["domain"]["domain_range"]["y"][1] - particle_Ty
@@ -1991,7 +1998,7 @@ class Energy_pure(Equation):
         total_loss = weights[0]*loss_u + weights[1]*loss_v + weights[2]*loss_w + \
                     weights[3]*loss_Tx + weights[4]*loss_Ty + weights[5]*loss_ENR + \
                     weights[6]*(loss_T_bu + loss_T_bb)
-        return total_loss, loss_u, loss_v, loss_w, loss_Tx, loss_Ty, loss_ENR, loss_T_bu, loss_T_bb
+        return total_loss, loss_u, loss_v, loss_w, 0.0, 0.0, 0.0, 0.0, loss_ENR, loss_T_bu, loss_T_bb, loss_Tx, loss_Ty, u_error, v_error, w_error, T_error
     
 class Energy_pure_adi(Equation):
     def __init__(self, all_params):

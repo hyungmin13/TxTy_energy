@@ -376,7 +376,7 @@ def Tecplotfile_gen(c, path, name, all_params, domain_range, output_shape, order
                                                 for i in range(0, eval_grid.shape[0], 10000)])
     else:
         uvwp, uxs, uys, uzs, Tx, Ty, Q = zip(*[Derivatives(dynamic_params, all_params, eval_grid[i:i+10000], model_fn)
-                                            for i in range(0, eval_grid.shape[0], 10000)])
+                                            for i in tqdm(range(0, eval_grid.shape[0], 10000))])
     
     # Concatenate the results
     uvwp = np.concatenate(uvwp, axis=0)

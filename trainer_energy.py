@@ -115,6 +115,7 @@ class PINN(PINNbase):
         data_Tx = []
         data_Ty = []
         b_batches = []
+        print(train_data.keys())
         for i in tqdm(range(N_p//self.c.optimization_init_kwargs["p_batch"])):
             batch_p = train_data['pos'][perm_p[i*self.c.optimization_init_kwargs["p_batch"]:(i+1)*self.c.optimization_init_kwargs["p_batch"]],:]
             batch_v = train_data['vel'][perm_p[i*self.c.optimization_init_kwargs["p_batch"]:(i+1)*self.c.optimization_init_kwargs["p_batch"]],:]
@@ -136,6 +137,10 @@ class PINN(PINNbase):
         v_batch = next(v_batches)
         Tx_batch = next(Tx_batches)
         Ty_batch = next(Ty_batches)
+        print(np.max(Tx_batch))
+        print(np.max(Ty_batch))
+        print(np.max(train_data['Tx']), np.max(train_data['Ty']))
+        print(np.max(p_batch[:,0]), np.max(p_batch[:,1]), np.max(p_batch[:,2]), np.max(p_batch[:,3]))
         if "path_s" in all_params['problem'].keys():
             grids['eqns']['x'] = np.unique(valid_data['pos'][:,1:2])
             grids['eqns']['y'] = np.unique(valid_data['pos'][:,2:3])
@@ -147,7 +152,7 @@ class PINN(PINNbase):
             grids['bczl']['y'] = np.unique(valid_data['pos'][:,2:3])
         else:
             print('grid data and boundary data are based on linspace')
-
+        print(np.max(grids['eqns']['t']), np.max(grids['eqns']['x']), np.max(grids['eqns']['y']), np.max(grids['eqns']['z']))
         g_batch = jnp.stack([random.choice(keys_next[k+1], 
                                            grids['eqns'][arg], 
                                            shape=(self.c.optimization_init_kwargs["e_batch"],)) 
@@ -173,6 +178,7 @@ class PINN(PINNbase):
             v_batch = next(v_batches)
             Tx_batch = next(Tx_batches)
             Ty_batch = next(Ty_batches)
+            #print(np.max(Tx_batch))
             g_batch = jnp.stack([random.choice(keys_next[k+1], 
                                             grids['eqns'][arg], 
                                             shape=(self.c.optimization_init_kwargs["e_batch"],)) 
@@ -224,6 +230,7 @@ class PINN(PINNbase):
             e_key = next(e_batch_key)
             e_batch_pos = random.choice(e_key, valid_data['pos'], shape = (self.c.optimization_init_kwargs["e_batch"],))
             e_batch_vel = random.choice(e_key, valid_data['vel'], shape = (self.c.optimization_init_kwargs["e_batch"],))
+            print('Tx_batch',Tx_batch)
             print(np.max(e_batch_pos[:,0]), np.max(e_batch_pos[:,1]), np.max(e_batch_pos[:,2]), np.max(e_batch_pos[:,3]))
             if 'T' in valid_data.keys():
                 e_batch_T = random.choice(e_key, valid_data['T'], shape = (self.c.optimization_init_kwargs["e_batch"],))
@@ -288,6 +295,7 @@ if __name__=="__main__":
     c = Constants(**data)
 
     run = PINN(c)
+    """
     if os.path.isfile(run.c.model_out_dir+'saved_dic_20000.pkl'):
         print('continuing from last checkpoint')
         checkpoint_list = sorted(glob(run.c.model_out_dir+'*.pkl'), key=lambda x: int(x.split('_')[-1].split('.')[0]))
@@ -296,8 +304,9 @@ if __name__=="__main__":
         with open(checkpoint_list[-1],"rb") as f:
             model_params = pickle.load(f)
         run.train(num, model_params)
+    
     else:
         run.train()
-
+    """
     
-    #run.train()
+    run.train()

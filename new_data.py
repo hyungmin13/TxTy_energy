@@ -97,6 +97,7 @@ def Derivatives(dynamic_params, all_params, g_batch, model_fns):
     keys = ['u_ref', 'v_ref', 'w_ref', 'u_ref']
 
     all_params["network1"]["layers"] = dynamic_params
+
     out_xx, out_xxx = equ_func3(all_params, g_batch, jnp.tile(jnp.array([[0.0, 1.0, 0.0, 0.0]]),(g_batch.shape[0],1)),
                                                     jnp.tile(jnp.array([[0.0, 1.0, 0.0, 0.0]]),(g_batch.shape[0],1)),
                                                     jnp.tile(jnp.array([[0.0, 1.0, 0.0, 0.0]]),(g_batch.shape[0],1)), model_fns)

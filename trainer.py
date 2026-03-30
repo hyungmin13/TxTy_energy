@@ -152,8 +152,8 @@ class PINN(PINNbase):
         p_batch = next(p_batches)
         v_batch = next(v_batches)
         if "path_s" in all_params['problem'].keys():
-            grids['eqns']['x'] = np.unique(valid_data['pos'][::2,1:2])
-            grids['eqns']['y'] = np.unique(valid_data['pos'][::2,2:3])
+            grids['eqns']['x'] = np.unique(valid_data['pos'][:,1:2])
+            grids['eqns']['y'] = np.unique(valid_data['pos'][:,2:3])
             grids['eqns']['z'] = np.unique(valid_data['pos'][:,3:4])
             
             grids['bczu']['x'] = np.unique(valid_data['pos'][:,1:2])
