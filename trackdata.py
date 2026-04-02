@@ -62,20 +62,12 @@ class Data(Database):
 
     @staticmethod
     def output_normalize(all_params, data):
-        vel_ref_keys = ['u_ref', 'v_ref', 'w_ref']
-        vel_ref = {vel_ref_keys[i]:np.max(np.abs(data['vel'][:,i:i+1])) for i in range(len(vel_ref_keys))}
-        print(all_params['data'])
+        vel_ref = {}
         vel_ref['u_ref'] = all_params['data']['u_ref']
         vel_ref['v_ref'] = all_params['data']['v_ref']
         vel_ref['w_ref'] = all_params['data']['w_ref']
-        try:
-            vel_ref['p_ref'] = all_params['data']['p_ref']
-        except:
-            print('there is no p_ref')
-        try:
-            vel_ref['T_ref'] = all_params['data']['T_ref']
-        except:
-            print('there is no T_ref')
+        vel_ref['p_ref'] = all_params['data']['p_ref']
+        vel_ref['T_ref'] = all_params['data']['T_ref']
         all_params["data"].update(vel_ref)
         return all_params
 

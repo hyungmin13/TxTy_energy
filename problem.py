@@ -29,16 +29,12 @@ class Problem(Problembase):
         u_ref = all_params["data"]["u_ref"]
         v_ref = all_params["data"]["v_ref"]
         w_ref = all_params["data"]["w_ref"]
-        try:
-            p_ref = all_params["data"]["p_ref"]
-        except:
-            print('there is no p_ref')
-        try:
-            T_ref = all_params["data"]["T_ref"]
-        except:
-            print('there is no T_ref')
+        p_ref = all_params["data"]["p_ref"]
+        T_ref = all_params["data"]["T_ref"]
+
         all_params["data"] = Data.init_params(path = path_s, data_keys = data_keys, 
-                                              viscosity = viscosity, u_ref = u_ref, v_ref= v_ref, w_ref=w_ref, p_ref = p_ref, T_ref=T_ref)
+                                              viscosity = viscosity, u_ref = u_ref, 
+                                              v_ref= v_ref, w_ref=w_ref, p_ref = p_ref, T_ref=T_ref)
 
         valid_data, _ = Data.train_data(all_params)
         return valid_data

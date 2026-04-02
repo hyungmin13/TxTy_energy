@@ -151,17 +151,7 @@ class PINN(PINNbase):
         v_batches = itertools.cycle(data_v)
         p_batch = next(p_batches)
         v_batch = next(v_batches)
-        if "path_s" in all_params['problem'].keys():
-            grids['eqns']['x'] = np.unique(valid_data['pos'][:,1:2])
-            grids['eqns']['y'] = np.unique(valid_data['pos'][:,2:3])
-            grids['eqns']['z'] = np.unique(valid_data['pos'][:,3:4])
-            
-            grids['bczu']['x'] = np.unique(valid_data['pos'][:,1:2])
-            grids['bczu']['y'] = np.unique(valid_data['pos'][:,2:3])
-            grids['bczl']['x'] = np.unique(valid_data['pos'][:,1:2])
-            grids['bczl']['y'] = np.unique(valid_data['pos'][:,2:3])
-        else:
-            print('grid data and boundary data are based on linspace')
+
         try:
             print('T_ref : ', all_params["data"]['T_ref'])
         except:
