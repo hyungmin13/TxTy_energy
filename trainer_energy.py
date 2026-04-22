@@ -158,20 +158,20 @@ class PINN(PINNbase):
                                            shape=(self.c.optimization_init_kwargs["e_batch"],)) 
                              for k, arg in enumerate(list(all_params["domain"]["domain_range"].keys()))],axis=1)
 
-
+        print(grids[all_params["domain"]["bound_keys"][0]])
         for b_key in all_params["domain"]["bound_keys"]:
             b_batch = jnp.stack([random.choice(keys_next[k+5], 
                                             grids[b_key][arg], 
                                             shape=(self.c.optimization_init_kwargs["e_batch"],)) 
                                 for k, arg in enumerate(list(all_params["domain"]["domain_range"].keys()))],axis=1)
             b_batches.append(b_batch)
-
+        print('test')
         # Initializing the update function
         update = PINN_update.lower(model_state, optimiser_fn, equation_fn, dynamic_param, static_params, static_keys, 
                                        g_batch, p_batch, v_batch, Tx_batch, Ty_batch, b_batches, model_fn).compile()
-        
+        print('test')
         # Training loop
-
+        print(b_batches)
         for i in range(self.c.optimization_init_kwargs["n_steps"]):
             keys_next = [next(keys_iter[i]) for i in range(num_keysplit)]
             p_batch = next(p_batches)
@@ -191,10 +191,11 @@ class PINN(PINNbase):
                                                 shape=(self.c.optimization_init_kwargs["e_batch"],)) 
                                     for k, arg in enumerate(list(all_params["domain"]["domain_range"].keys()))],axis=1)
                 b_batches.append(b_batch)
+            #print('test')
             lossval, model_state, dynamic_param = update(model_state, dynamic_param, static_params, g_batch, p_batch, 
                                                          v_batch, Tx_batch, Ty_batch, b_batches)
         
-        
+            #print('test') 
             self.report(numb+i, report_fn, dynamic_param, all_params, p_batch, v_batch, g_batch, Tx_batch, Ty_batch, b_batches, valid_data, keys_iter[-1], self.c.optimization_init_kwargs["save_step"], model_fn)
             self.save_model1(numb+i, dynamic_param, all_params, self.c.optimization_init_kwargs["save_step"], model_fn)
 
@@ -227,18 +228,24 @@ class PINN(PINNbase):
         save_report = (i % save_step == 0)
         if save_report:
             all_params["network1"]["layers"] = dynamic_params
+            #print('check1')
             e_key = next(e_batch_key)
+            #print(e_key)
+            #print('check2')
+            #print(valid_data['pos'])
             e_batch_pos = random.choice(e_key, valid_data['pos'], shape = (self.c.optimization_init_kwargs["e_batch"],))
+            #print('check3')
             e_batch_vel = random.choice(e_key, valid_data['vel'], shape = (self.c.optimization_init_kwargs["e_batch"],))
-            print('Ty_batch',Ty_batch)
-            print(np.max(e_batch_pos[:,0]), np.max(e_batch_pos[:,1]), np.max(e_batch_pos[:,2]), np.max(e_batch_pos[:,3]))
+            #print('Ty_batch',Ty_batch)
+            #print(np.max(e_batch_pos[:,0]), np.max(e_batch_pos[:,1]), np.max(e_batch_pos[:,2]), np.max(e_batch_pos[:,3]))
             if 'T' in valid_data.keys():
                 e_batch_T = random.choice(e_key, valid_data['T'], shape = (self.c.optimization_init_kwargs["e_batch"],))
                 Losses = report_fn(dynamic_params, all_params, g_batch, p_batch, v_batch, e_batch_pos, e_batch_vel, Tx_batch, Ty_batch, b_batch, model_fns, e_batch_T)
             else:
+                print('check')
                 #e_batch_T = random.choice(e_key, valid_data['T'], shape = (self.c.optimization_init_kwargs["e_batch"],))
-                Losses = report_fn(dynamic_params, all_params, g_batch, p_batch, v_batch, e_batch_pos, e_batch_vel, Tx_batch, Ty_batch, b_batch, model_fns)
-
+                Losses = report_fn(dynamic_params, all_params, g_batch, p_batch, v_batch, e_batch_pos, e_batch_vel, b_batch, model_fns, Tx_batch, Ty_batch)
+                print('check3')
             print(f"step_num : {i:<{12}} total_loss : {Losses[0]:<{12}.{5}} u_loss : {Losses[1]:<{12}.{5}} "
                     f"v_loss : {Losses[2]:<{12}.{5}} w_loss : {Losses[3]:<{12}.{5}} con_loss : {Losses[4]:<{12}.{5}} "
                     f"NS1_loss : {Losses[5]:<{12}.{5}} NS2_loss : {Losses[6]:<{12}.{5}} NS3_loss : {Losses[7]:<{12}.{5}} Eng_loss : {Losses[8]:<{12}.{5}} "

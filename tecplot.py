@@ -94,7 +94,7 @@ def equ_func3(all_params, g_batch, cotangent1, cotangent2, cotangent3, model_fns
     return out_xx, out_xxx
 
 def Derivatives(dynamic_params, all_params, g_batch, model_fns):
-    keys = ['u_ref', 'v_ref', 'w_ref', 'u_ref']
+    keys = ['u_ref', 'v_ref', 'w_ref', 'u_ref', 'T_ref']
 
     all_params["network1"]["layers"] = dynamic_params
 
@@ -410,7 +410,7 @@ def Tecplotfile_gen(c, path, name, all_params, domain_range, output_shape, order
     X, Y, Z = output_shape[1:]
     vars = [('u_pred[m/s]',np.float32(uvwp[:,0].reshape(-1))), ('v_pred[m/s]',np.float32(uvwp[:,1].reshape(-1))), 
             ('w_pred[m/s]',np.float32(uvwp[:,2].reshape(-1))), ('p_pred[Pa]',np.float32(uvwp[:,3].reshape(-1))),
-            ('Q[1/s^2]', np.float32(Q.reshape(-1)))]
+            ('T_pred[Pa]',np.float32(uvwp[:,4].reshape(-1))), ('Q[1/s^2]', np.float32(Q.reshape(-1)))]
     if is_ground:
         vars += [('u_error[m/s]', np.float32(errors[0].reshape(-1))),
                  ('v_error[m/s]', np.float32(errors[1].reshape(-1))),

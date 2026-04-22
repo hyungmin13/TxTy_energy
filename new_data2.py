@@ -219,12 +219,12 @@ def Tecplotfile_gen(c, path, name, particles, particles_vel, all_params, domain_
     Tx = np.concatenate(Tx, axis=0)
     Ty = np.concatenate(Ty, axis=0)
 
-    if os.path.isdir(path + 'newdata/' + name):
+    if os.path.isdir(path + 'newdata/' + name + '_dense'):
         pass
     else:
         print('check')
-        os.mkdir(path + 'newdata/' + name)
-    np.save(path + 'newdata/' + name + f'/ts_{timestep:02d}' + '.npy', np.concatenate([eval_grid_e, uvwp, Tx.reshape(-1,1), Ty.reshape(-1,1)], axis=1))
+        os.mkdir(path + 'newdata/' + name + '_dense')
+    np.save(path + 'newdata/' + name + '_dense' + f'/ts_{timestep:02d}' + '.npy', np.concatenate([eval_grid_e, uvwp, Tx.reshape(-1,1), Ty.reshape(-1,1)], axis=1))
 #%%
 if __name__ == "__main__":
     from domain import *

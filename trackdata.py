@@ -31,6 +31,7 @@ class Data(Database):
     @staticmethod
     def data_load_npy(filename, data_keys):
         data = np.load(filename)
+        print(data[0,:])
         cols = {'pos':4, 'vel':3, 'p':1, 'T':1, 'Tx':1, 'Ty':1, 'acc':3}
         required_keys = ['pos', 'vel']
         for required_key in required_keys:
@@ -42,6 +43,8 @@ class Data(Database):
             if col in data_keys:
                 all_data[col] = data[:,idx:idx+cols[col]]
                 idx += cols[col]
+        print(all_data['Tx'][0])
+        print(all_data['Ty'][0])
         return all_data
 
     @staticmethod
@@ -94,6 +97,8 @@ class Data(Database):
         datas = Data.domain_filter(datas, data_keys, domain_range)
         train_data = Data.input_normalize(all_params, datas)
         all_params = Data.output_normalize(all_params, train_data)
+        all_params["data"]["in_mean"] = np.array([[np.mean(train_data['pos'][:,0]), np.mean(train_data['pos'][:,1]), np.mean(train_data['pos'][:,2]), np.mean(train_data['pos'][:,3])]])
+        all_params["data"]["in_std"] = np.array([[np.std(train_data['pos'][:,0]), np.std(train_data['pos'][:,1]), np.std(train_data['pos'][:,2]), np.std(train_data['pos'][:,3])]])
         return train_data, all_params
     
 
