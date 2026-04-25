@@ -31,7 +31,7 @@ class Data(Database):
     @staticmethod
     def data_load_npy(filename, data_keys):
         data = np.load(filename)
-        print(data[0,:])
+
         cols = {'pos':4, 'vel':3, 'p':1, 'T':1, 'Tx':1, 'Ty':1, 'acc':3}
         required_keys = ['pos', 'vel']
         for required_key in required_keys:
@@ -43,8 +43,7 @@ class Data(Database):
             if col in data_keys:
                 all_data[col] = data[:,idx:idx+cols[col]]
                 idx += cols[col]
-        print(all_data['Tx'][0])
-        print(all_data['Ty'][0])
+
         return all_data
 
     @staticmethod
