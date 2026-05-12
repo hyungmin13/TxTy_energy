@@ -260,7 +260,7 @@ class PINN(PINNbase):
                     f"Tbu_loss : {Losses[9]:<{12}.{5}} Tbb_loss : {Losses[10]:<{12}.{5}} Tx_loss : {Losses[11]:<{12}.{5}} Ty_loss : {Losses[12]:<{12}.{5}}"
                     f"u_error : {Losses[13]:<{12}.{5}} v_error : {Losses[14]:<{12}.{5}} w_error : {Losses[15]:<{12}.{5}} T_error : {Losses[16]:<{12}.{5}}")
             with open(self.c.report_out_dir + "reports.txt", "a") as f:
-                f.write(f"{i:<{12}} {Losses[0]:<{12}.{5}} {Losses[1]:<{12}.{5}} {Losses[2]:<{12}.{5}} {Losses[3]:<{12}.{5}} {Losses[4]:<{12}.{5}} "
+                f.write(f"{i:<{12}} {Losses[9]:<{12}.{5}} {Losses[10]:<{12}.{5}} {Losses[11]:<{12}.{5}} {Losses[12]:<{12}.{5}} {Losses[4]:<{12}.{5}} "
                         f"{Losses[5]:<{12}.{5}} {Losses[6]:<{12}.{5}} {Losses[7]:<{12}.{5}} {Losses[8]:<{12}.{5}} {Losses[13]:<{12}.{5}} {Losses[14]:<{12}.{5}} {Losses[15]:<{12}.{5}} {Losses[16]:<{12}.{5}}\n")
             f.close()
         return

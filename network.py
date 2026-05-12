@@ -38,8 +38,8 @@ class MLP(Network):
         inmax = all_params["domain"]["in_max"]
         inmean = all_params["data"]["in_mean"]
         instd = all_params["data"]["in_std"]
-        x = (x-inmean)/instd
-        #x = 2*(x - inmin)/(inmax-inmin) - 1
+        #x = (x-inmean)/instd
+        x = 2*(x - inmin)/(inmax-inmin) - 1
         for w, b, g in params[:-1]:
             x = g*jnp.dot(x,w/jnp.linalg.norm(w,axis=0, keepdims=True)) + b
             x = jnp.tanh(x)

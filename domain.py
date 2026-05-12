@@ -114,24 +114,26 @@ class Domain(Domainbase):
         arg_keys = ['t', 'x', 'y', 'z']
         grids = {'eqns':{arg_keys[j]:[] for j in range(len(arg_keys))}}
         grids['eqns']['t'] = t
-
-        for i, arg_key in enumerate(arg_keys):
-            bound_key = [b for b in all_params["domain"]["bound_keys"] if arg_key in b]
-            if len(bound_key)==1:
-                grids['eqns'][arg_key] = Domain.stretched_to_uniform_1d(domain_range[arg_key][1],
-                                                                        fine_boundary[arg_key],
-                                                                        int(grid_size[i]*0.2),
-                                                                        grid_size[i]-int(grid_size[i]*0.2),
-                                                                        method=all_params["domain"]['method'])
-            elif len(bound_key)==2:
-                grids['eqns'][arg_key] = Domain.symmetric_stretched_uniform_1d(domain_range[arg_key][1],
-                                                                        fine_boundary[arg_key],
-                                                                        int(grid_size[i]*0.2),
-                                                                        grid_size[i]-int(grid_size[i]*0.2),
-                                                                        method=all_params["domain"]['method'])    
-            else:
-                grids['eqns'][arg_key] = np.linspace(domain_range[arg_key][0], domain_range[arg_key][1], grid_size[i])
-
+        try:
+            for i, arg_key in enumerate(arg_keys):
+                bound_key = [b for b in all_params["domain"]["bound_keys"] if arg_key in b]
+                if len(bound_key)==1:
+                    grids['eqns'][arg_key] = Domain.stretched_to_uniform_1d(domain_range[arg_key][1],
+                                                                            fine_boundary[arg_key],
+                                                                            int(grid_size[i]*0.2),
+                                                                            grid_size[i]-int(grid_size[i]*0.2),
+                                                                            method=all_params["domain"]['method'])
+                elif len(bound_key)==2:
+                    grids['eqns'][arg_key] = Domain.symmetric_stretched_uniform_1d(domain_range[arg_key][1],
+                                                                            fine_boundary[arg_key],
+                                                                            int(grid_size[i]*0.2),
+                                                                            grid_size[i]-int(grid_size[i]*0.2),
+                                                                            method=all_params["domain"]['method'])    
+                else:
+                    grids['eqns'][arg_key] = np.linspace(domain_range[arg_key][0], domain_range[arg_key][1], grid_size[i])
+        except:
+            for i in range(1,len(arg_keys)):
+                grids['eqns'][arg_keys[i]] = np.linspace(domain_range[arg_keys[i]][0], domain_range[arg_keys[i]][1], grid_size[i])
         grids = Domain.bound_sampler(all_params, grids)
         grids = Domain.normalize(all_params, grids)
         all_params["domain"]["in_min"] = jnp.array([[domain_range['t'][0], domain_range['x'][0], domain_range['y'][0], domain_range['z'][0]]])
