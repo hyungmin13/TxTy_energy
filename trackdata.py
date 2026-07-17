@@ -43,7 +43,9 @@ class Data(Database):
             if col in data_keys:
                 all_data[col] = data[:,idx:idx+cols[col]]
                 idx += cols[col]
-
+        #print(data[0,:])
+        #print(all_data['Tx'])
+        #print(all_data['Ty'])
         return all_data
 
     @staticmethod

@@ -86,10 +86,13 @@ class PINN(PINNbase):
         checkpoint_list = sorted(glob(self.c2.model_out_dir+'/*.pkl'), key=lambda x: int(x.split('_')[-1].split('.')[0]))
         with open(checkpoint_list[-1],"rb") as f:
             model_params = pickle.load(f)
-
-
-        #if 'model_params' in kwargs.keys():
-        #    model_params = kwargs['model_params']
+         
+        if kwargs.get('cfl_chp'):
+            checkpoint_list_c = sorted(glob(self.c.model_out_dir+'/*.pkl'), key=lambda x: int(x.split('_')[-1].split('.')[0]))
+            print(checkpoint_list_c[-1])
+            with open(checkpoint_list[-1],"rb") as f:
+                model_params_c = pickle.load(f)
+        
         # Initialize optmiser
         learn_rate = optax.exponential_decay(self.c.optimization_init_kwargs["learning_rate"],
                                              self.c.optimization_init_kwargs["decay_step"],
@@ -111,7 +114,11 @@ class PINN(PINNbase):
         _, all_params2 = self.c2.data.train_data(all_params2)
         model = Model(all_params2["network1"]["layers"], model_fn2)
         all_params2["network1"]["layers"] = from_state_dict(model, model_params).params
-
+        
+        if kwargs.get('cfl_chp'):
+            model_c = Model(all_params["network1"]["layers"], model_fn)
+            all_params["network1"]["layers"] = from_state_dict(model_c, model_params_c).params
+            print('Loading previous checkpoint completed')
         dynamic_param = all_params["network1"].pop("layers")
         dynamic_param2 = all_params2["network1"].pop("layers")
 
@@ -189,13 +196,15 @@ class PINN(PINNbase):
                              for k, arg in enumerate(list(all_params["domain"]["domain_range"].keys()))],axis=1)
 
         print(grids[all_params["domain"]["bound_keys"][0]])
+        print(grids['eqns'])
         for b_key in all_params["domain"]["bound_keys"]:
             b_batch = jnp.stack([random.choice(keys_next[k+5], 
                                             grids[b_key][arg], 
                                             shape=(self.c.optimization_init_kwargs["e_batch"],)) 
                                 for k, arg in enumerate(list(all_params["domain"]["domain_range"].keys()))],axis=1)
             b_batches.append(b_batch)
-
+        print(len(b_batches))
+        
         # Initializing the update function
         update = PINN_update.lower(model_state, optimiser_fn, equation_fn, dynamic_param, dynamic_param2, static_params, static_params2, 
                                    static_keys, static_keys2, g_batch, p_batch, v_batch, Tx_batch, Ty_batch, b_batches, model_fn, model_fn2).compile()
@@ -248,7 +257,7 @@ class PINN(PINNbase):
 
             if 'T' in valid_data.keys():
                 e_batch_T = random.choice(e_key, valid_data['T'], shape = (self.c.optimization_init_kwargs["e_batch"],))
-                Losses = report_fn(dynamic_params, dynamic_params2, all_params, all_params2, g_batch, p_batch, v_batch, e_batch_pos, e_batch_vel, Tx_batch, Ty_batch, b_batch, model_fns, model_fns2, e_batch_T)
+                Losses = report_fn(dynamic_params, dynamic_params2, all_params, all_params2, g_batch, p_batch, v_batch, e_batch_pos, e_batch_vel, b_batch, model_fns, model_fns2, Tx_batch, Ty_batch, e_batch_T)
             else:
                 print('check')
                 #e_batch_T = random.choice(e_key, valid_data['T'], shape = (self.c.optimization_init_kwargs["e_batch"],))
@@ -258,7 +267,7 @@ class PINN(PINNbase):
                     f"v_loss : {Losses[2]:<{12}.{5}} w_loss : {Losses[3]:<{12}.{5}} con_loss : {Losses[4]:<{12}.{5}} "
                     f"NS1_loss : {Losses[5]:<{12}.{5}} NS2_loss : {Losses[6]:<{12}.{5}} NS3_loss : {Losses[7]:<{12}.{5}} Eng_loss : {Losses[8]:<{12}.{5}} "
                     f"Tbu_loss : {Losses[9]:<{12}.{5}} Tbb_loss : {Losses[10]:<{12}.{5}} Tx_loss : {Losses[11]:<{12}.{5}} Ty_loss : {Losses[12]:<{12}.{5}}"
-                    f"u_error : {Losses[13]:<{12}.{5}} v_error : {Losses[14]:<{12}.{5}} w_error : {Losses[15]:<{12}.{5}} T_error : {Losses[16]:<{12}.{5}}")
+                    f"u_error : {Losses[13]:<{12}.{5}} v_error : {Losses[14]:<{12}.{5}} w_error : {Losses[15]:<{12}.{5}} T_error : {Losses[16]:<{12}.{5}} Tbx1_error : {Losses[17]:<{12}.{5}} Tbx2_error : {Losses[18]:<{12}.{5}} Tby1_error : {Losses[19]:<{12}.{5}} Tby2_error : {Losses[20]:<{12}.{5}}")
             with open(self.c.report_out_dir + "reports.txt", "a") as f:
                 f.write(f"{i:<{12}} {Losses[9]:<{12}.{5}} {Losses[10]:<{12}.{5}} {Losses[11]:<{12}.{5}} {Losses[12]:<{12}.{5}} {Losses[4]:<{12}.{5}} "
                         f"{Losses[5]:<{12}.{5}} {Losses[6]:<{12}.{5}} {Losses[7]:<{12}.{5}} {Losses[8]:<{12}.{5}} {Losses[13]:<{12}.{5}} {Losses[14]:<{12}.{5}} {Losses[15]:<{12}.{5}} {Losses[16]:<{12}.{5}}\n")
@@ -298,18 +307,20 @@ if __name__=="__main__":
 
     run = PINN(c, c2)
 
-    """
-    if os.path.isfile(run.c.model_out_dir+'saved_dic_20000.pkl'):
+    checkpoint_ = glob(run.c.model_out_dir+'*.pkl')
+    print(checkpoint_)
+    if len(checkpoint_)>0:
+        print(checkpoint_)
         print('continuing from last checkpoint')
-        checkpoint_list = sorted(glob(run.c.model_out_dir+'*.pkl'), key=lambda x: int(x.split('_')[-1].split('.')[0]))
-        num_ext = lambda x: int(x.split('_')[-1].split('.')[0])
-        num = num_ext(checkpoint_list[-1]) + 1
-        with open(checkpoint_list[-1],"rb") as f:
-            model_params = pickle.load(f)
-        run.train(num, model_params)
+        #checkpoint_list = sorted(glob(run.c.model_out_dir+'*.pkl'), key=lambda x: int(x.split('_')[-1].split('.')[0]))
+        #num_ext = lambda x: int(x.split('_')[-1].split('.')[0])
+        #num = num_ext(checkpoint_list[-1]) + 1
+        #with open(checkpoint_list[-1],"rb") as f:
+        #    model_params = pickle.load(f)
+        run.train(cfl_chp = True)
     
     else:
         run.train()
-    """
     
-    run.train()
+    
+    #run.train()

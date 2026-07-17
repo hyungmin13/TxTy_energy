@@ -170,7 +170,7 @@ def Derivatives(dynamic_params, all_params, g_batch, model_fns):
 
     return uvwp, Tx, Ty
 
-def Tecplotfile_gen(c, path, name, particles, particles_vel, all_params, domain_range, output_shape, order, timestep, is_ground, is_mean, model_fn, model_fn2=None):
+def Tecplotfile_gen(c, path, name, particles, particles_vel, all_params, all_params2, domain_range, output_shape, order, timestep, is_ground, is_mean, model_fn, model_fn2=None):
     
     # Load the parameters
     pos_ref = all_params["domain"]["in_max"].flatten()
@@ -181,9 +181,16 @@ def Tecplotfile_gen(c, path, name, particles, particles_vel, all_params, domain_
     gridbase = [np.linspace(domain_range[key][0], domain_range[key][1], output_shape[i]) for i, key in enumerate(['t', 'x', 'y', 'z'])]
     gridbase[1] = gridbase[1][2:-2]
     gridbase[2] = gridbase[2][2:-2]
-    gridbase[3] = gridbase[3][3:-3]
+    gridbase[3] = gridbase[3][10:-11]
     print(gridbase)
+    print(all_params2['domain'].get('fine_boundary'))
+    if all_params2['domain'].get('fine_boundary'):
+        print('fine_boundary##################################################################')
+        grids, all_params2 = c.domain.sampler(all_params2)
+        gridbase = [grids['eqns']['t']*pos_ref[0], grids['eqns']['x']*pos_ref[1], grids['eqns']['y']*pos_ref[2], grids['eqns']['z']*pos_ref[3]]
+    print(gridbase)    
     gridbase_n = [gridbase[i].copy()/pos_ref[i] for i in range(len(gridbase))]
+    
     if order[0] == 0:
         if order[1] == 1:
             z_e, y_e, x_e = np.meshgrid(gridbase[-1], gridbase[-2], gridbase[-3], indexing='ij')
@@ -297,18 +304,33 @@ if __name__ == "__main__":
     is_ground = data['tecplot_init_kwargs']['is_ground']
     path = data['tecplot_init_kwargs']['path']
     is_mean = data['tecplot_init_kwargs']['is_mean']
+    all_params2 = all_params.copy()
+    try:
+        bound_keys = data['bound_init_kwargs']['bound_keys']
+        fine_boundary = data['bound_init_kwargs']['fine_boundary']
+        method = data['bound_init_kwargs']['method']
+        
+        all_params2['domain']['grid_size'] = output_shape
+        all_params2['domain']['domain_range'] = domain_range
+        all_params2['domain']['bound_keys'] = bound_keys
+        all_params2['domain']['fine_boundary'] = fine_boundary
+        all_params2['domain']['method'] = method
+    except:
+        if all_params2['domain'].get('fine_boundary'):
+            all_params2['domain'].pop('fine_boundary')
+        print('No fine boundary')
     path = os.path.dirname(cur_dir) + '/' + path
     pos_ref = all_params["domain"]["in_max"].flatten()
     pos = train_data['pos']
     _, counts = np.unique(pos[:,0],return_counts=True)
     vel = train_data['vel']
-    print(pos.shape)
+    
     if "network2" in all_params.keys():
         for timestep in timesteps:
-            Tecplotfile_gen(c, path, args.foldername, all_params, domain_range, output_shape, order, timestep, is_ground, is_mean, model_fn, model_fn2)
+            Tecplotfile_gen(c, path, args.foldername, all_params, all_params2, domain_range, output_shape, order, timestep, is_ground, is_mean, model_fn, model_fn2)
 
     else:
         for timestep in timesteps:
             pos_new = pos[np.sum(counts[:timestep]):np.sum(counts[:timestep+1]),:]
             vel_new = vel[np.sum(counts[:timestep]):np.sum(counts[:timestep+1]),:]
-            Tecplotfile_gen(c, path, args.foldername, pos_new, vel_new, all_params, domain_range, output_shape, order, timestep, is_ground, is_mean, model_fn)
+            Tecplotfile_gen(c, path, args.foldername, pos_new, vel_new, all_params, all_params2, domain_range, output_shape, order, timestep, is_ground, is_mean, model_fn)
