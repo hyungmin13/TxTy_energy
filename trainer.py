@@ -43,7 +43,7 @@ class Model(struct.PyTreeNode):
     def __apply__(self,*args):
         return self.forward(*args)
 
-@partial(jax.jit, static_argnums=(1, 2, 5, 10))
+@partial(jax.jit, static_argnums=(1, 2, 5, 11))
 def PINN_update(model_states, optimiser_fn, equation_fn, dynamic_params, static_params, static_keys, grids, particles, particle_vel, particle_scale, particle_bd, model_fn):
     static_leaves, treedef = static_keys
     leaves = [d if s is None else s for d, s in zip(static_params, static_leaves)]
@@ -131,6 +131,7 @@ class PINN(PINNbase):
         p_batch = next(p_batches)
         v_batch = next(v_batches)
         s_batch = next(s_batches)
+        print(p_batch.shape, v_batch.shape, s_batch.shape)
         g_batch = jnp.stack([random.choice(keys_next[k+1], 
                                            grids['eqns'][arg], 
                                            shape=(self.c.optimization_init_kwargs["p_batch"],)) 
@@ -148,11 +149,11 @@ class PINN(PINNbase):
         # Initializing the update function
         update = PINN_update.lower(model_states, optimiser_fn, equation1_fn, dynamic_params, static_params, static_keys, g_batch, p_batch, v_batch, s_batch, b_batches, model_fn).compile()
 
-            # Training loop
+        # Training loop
         RAD_check = 0
         RAD = False
         n = int(all_params['domain']['max_RAD'])
-        for i in range(self.c.optimization_init_kwargs["n_steps"]):
+        for i in tqdm(range(self.c.optimization_init_kwargs["n_steps"])):
             keys_next = [next(keys_iter[i]) for i in range(num_keysplit)]
             p_batch = next(p_batches)
             v_batch = next(v_batches)

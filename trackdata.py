@@ -3,7 +3,7 @@ import numpy as np
 from glob import glob
 import os
 from scipy.interpolate import PchipInterpolator
-
+import itertools
 class Database:
     @staticmethod
     def init_parmas(path, s_range, t_range, track_limit):
@@ -87,7 +87,7 @@ class Data(Database):
         #bound_keys = all_params["data"]["bound_keys"]
 
         filenames = sorted(glob(os.path.dirname(cur_dir)+path+'*.npy'))
-
+        print(filenames)
         datas = {data_keys[i]:[] for i in range(len(data_keys))}
 
         seed_number = np.arange(0,1000)
@@ -171,8 +171,8 @@ class Data(Database):
 
         interps = {name: PchipInterpolator(z_half, log_half[name])
                     for name in comps}
-        scale = [get_scale(z,interps[name],profiels[name],target_ratio=10.0) for name in comps]
-        train_data['scale'] = np.concatenate([scale],1)
+        scale = [get_scale(z,interps[name],profiles[name],target_ratio=10.0).reshape(-1,1) for name in comps]
+        train_data['scale'] = np.concatenate(scale,1)
         return train_data, bin_idx_
 
         
@@ -186,7 +186,7 @@ if __name__ == "__main__":
 
     cur_dir = os.getcwd()
     #path = '/RBC_G8_DNS/npdata/lv6_xbound/'
-    path = '/RBC_G8_DNS/newdata/lv4_pc2/'
+    path = '/RBC_G8_DNS/npdata/lv4_pc/'
     data_keys = ['pos', 'vel',]
     viscosity = 2.64565e-3
 
@@ -216,7 +216,7 @@ if __name__ == "__main__":
     key, batch_key = random.split(global_key)
     num_keysplit = 10
     keys = random.split(batch_key, num = num_keysplit)
-    keys_split = [random.split(keys[i], num = self.c.optimization_init_kwargs["n_steps"]) for i in range(num_keysplit)]
+    keys_split = [random.split(keys[i], num = 1000000) for i in range(num_keysplit)]
     keys_iter = [iter(keys_split[i]) for i in range(num_keysplit)]
     keys_next = [next(keys_iter[i]) for i in range(num_keysplit)]
     N_p = train_data['pos'].shape[0]
@@ -227,20 +227,29 @@ if __name__ == "__main__":
     for i in range(N_p//10000):
         batch_p = train_data['pos'][perm_p[i*10000:(i+1)*10000],:]
         batch_v = train_data['vel'][perm_p[i*10000:(i+1)*10000],:]
-        batch_scale = scale[perm_p[i*10000:(i+1)*10000],:]
+        batch_scale = train_data['scale'][perm_p[i*10000:(i+1)*10000],:]
         data_p.append(batch_p)
         data_v.append(batch_v)
         data_scale.append(batch_scale)
     data_p.append(train_data['pos'][perm_p[-1-10000:-1],:])
     data_v.append(train_data['vel'][perm_p[-1-10000:-1],:])
-    data_scale.append(scale[perm_p[-1-10000:-1],:])
+    data_scale.append(train_data['scale'][perm_p[-1-10000:-1],:])
     p_batches = itertools.cycle(data_p)
     v_batches = itertools.cycle(data_v)
     s_batches = itertools.cycle(data_scale)
     p_batch = next(p_batches)
     v_batch = next(v_batches)
     s_batch = next(s_batches)
-
+#%%
+    print(np.max(np.abs(train_data['vel'][idx,0]*train_data['scale'][idx,0])),
+          np.min(np.abs(train_data['vel'][idx,0]*train_data['scale'][idx,0])))
+    print(np.max(np.abs(train_data['vel'][idx,1]*train_data['scale'][idx,1])),
+          np.min(np.abs(train_data['vel'][idx,1]*train_data['scale'][idx,1])))
+    print(np.max(np.abs(train_data['vel'][idx,2]*train_data['scale'][idx,2])),
+          np.min(np.abs(train_data['vel'][idx,2]*train_data['scale'][idx,2])))
+#%%
+    
+#%%
     save_dir = Path("./RBC_vel_results")
     fig, axes = plt.subplots(
         1,
@@ -248,11 +257,11 @@ if __name__ == "__main__":
         figsize=(15, 4),
         constrained_layout=True,
     )
-    im0 = axes[0].plot(np.abs(s_batch[:,0]*v_batch[:,0])
+    im0 = axes[0].plot(np.abs(train_data['vel'][idx,0]*train_data['scale'][idx,0])
     )
-    im1 = axes[1].plot(np.abs(s_batch[:,1]*v_batch[:,1])
+    im1 = axes[1].plot(np.abs(train_data['vel'][idx,1]*train_data['scale'][idx,1])
     )
-    im2 = axes[2].plot(np.abs(s_batch[:,2]*v_batch[:,2])
+    im2 = axes[2].plot(np.abs(train_data['vel'][idx,-1]*train_data['scale'][idx,-1])
     )
     fig.savefig(
         save_dir /
@@ -260,3 +269,5 @@ if __name__ == "__main__":
         dpi=300,
         bbox_inches="tight",
     )
+
+# %%
