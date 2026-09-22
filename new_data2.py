@@ -94,7 +94,7 @@ def equ_func3(all_params, g_batch, cotangent1, cotangent2, cotangent3, model_fns
     return out_xx, out_xxx
 
 def Derivatives(dynamic_params, all_params, g_batch, model_fns):
-    keys = ['u_ref', 'v_ref', 'w_ref', 'u_ref']
+    keys = ['u_ref', 'v_ref', 'w_ref', 'u_ref', 'T_ref']
 
     all_params["network1"]["layers"] = dynamic_params
     out_xx, out_xxx = equ_func3(all_params, g_batch, jnp.tile(jnp.array([[0.0, 1.0, 0.0, 0.0]]),(g_batch.shape[0],1)),
@@ -179,9 +179,9 @@ def Tecplotfile_gen(c, path, name, particles, particles_vel, all_params, all_par
         dynamic_params2 = all_params["network2"].pop("layers")
     # Create the evaluation grid
     gridbase = [np.linspace(domain_range[key][0], domain_range[key][1], output_shape[i]) for i, key in enumerate(['t', 'x', 'y', 'z'])]
-    gridbase[1] = gridbase[1][2:-2]
-    gridbase[2] = gridbase[2][2:-2]
-    gridbase[3] = gridbase[3][10:-11]
+    #gridbase[1] = gridbase[1][2:-2]
+    #gridbase[2] = gridbase[2][2:-2]
+    #gridbase[3] = gridbase[3][10:-10]
     print(gridbase)
     print(all_params2['domain'].get('fine_boundary'))
     if all_params2['domain'].get('fine_boundary'):
@@ -189,6 +189,15 @@ def Tecplotfile_gen(c, path, name, particles, particles_vel, all_params, all_par
         grids, all_params2 = c.domain.sampler(all_params2)
         gridbase = [grids['eqns']['t']*pos_ref[0], grids['eqns']['x']*pos_ref[1], grids['eqns']['y']*pos_ref[2], grids['eqns']['z']*pos_ref[3]]
     print(gridbase)    
+    is_unst = 1
+    if is_unst:
+        ground_data = np.load(path+'ground/ts_'+str(timestep).zfill(2) + '.npy')
+        #ground_data = np.load(path+'ground/ts_'+str(10).zfill(2) + '.npy')
+        #gridbase_ = [np.unique(ground_data[:,i]) for i in range(4)]
+        gridbase = [np.unique(ground_data[:,i]) for i in range(4)]
+    #gridbase[1] = gridbase_[1]
+    #gridbase[2] = gridbase_[2]
+    #gridbase[3] = gridbase_[3]
     gridbase_n = [gridbase[i].copy()/pos_ref[i] for i in range(len(gridbase))]
     
     if order[0] == 0:
@@ -212,9 +221,11 @@ def Tecplotfile_gen(c, path, name, particles, particles_vel, all_params, all_par
         else:
             x_e, y_e, z_e = np.meshgrid(gridbase[-3], gridbase[-2], gridbase[-1], indexing='ij')
             x_n, y_n, z_n = np.meshgrid(gridbase_n[-3], gridbase_n[-2], gridbase_n[-1], indexing='ij')
-
-    t_e = np.zeros(z_e.shape[0]*z_e.shape[1]*z_e.shape[2]) + gridbase[0][timestep]
-    t_n = np.zeros(z_e.shape[0]*z_e.shape[1]*z_e.shape[2]) + gridbase_n[0][timestep]
+    print(gridbase[0])
+    #t_e = np.zeros(z_e.shape[0]*z_e.shape[1]*z_e.shape[2]) + gridbase[0][timestep]
+    #t_n = np.zeros(z_e.shape[0]*z_e.shape[1]*z_e.shape[2]) + gridbase_n[0][timestep]
+    t_e = np.zeros(z_e.shape[0]*z_e.shape[1]*z_e.shape[2]) + gridbase[0]
+    t_n = np.zeros(z_e.shape[0]*z_e.shape[1]*z_e.shape[2]) + gridbase_n[0]
     eval_grid = np.concatenate([t_n.reshape(-1,1), x_n.reshape(-1,1), y_n.reshape(-1,1), z_n.reshape(-1,1)], axis=1)
     eval_grid_e = np.concatenate([t_e.reshape(-1,1), x_e.reshape(-1,1), y_e.reshape(-1,1), z_e.reshape(-1,1)], axis=1)
     # Evaluate the derivatives
@@ -226,12 +237,12 @@ def Tecplotfile_gen(c, path, name, particles, particles_vel, all_params, all_par
     Tx = np.concatenate(Tx, axis=0)
     Ty = np.concatenate(Ty, axis=0)
 
-    if os.path.isdir(path + 'newdata/' + name + '_dense'):
+    if os.path.isdir(path + 'newdata/' + name + '_dense2'):
         pass
     else:
         print('check')
-        os.mkdir(path + 'newdata/' + name + '_dense')
-    np.save(path + 'newdata/' + name + '_dense' + f'/ts_{timestep:02d}' + '.npy', np.concatenate([eval_grid_e, uvwp, Tx.reshape(-1,1), Ty.reshape(-1,1)], axis=1))
+        os.mkdir(path + 'newdata/' + name + '_dense2')
+    np.save(path + 'newdata/' + name + '_dense2' + f'/ts_{timestep:02d}' + '.npy', np.concatenate([eval_grid_e, uvwp, Tx.reshape(-1,1), Ty.reshape(-1,1)], axis=1))
 #%%
 if __name__ == "__main__":
     from domain import *

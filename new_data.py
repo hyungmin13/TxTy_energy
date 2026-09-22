@@ -182,6 +182,10 @@ def Tecplotfile_gen(c, path, name, particles, particles_vel, all_params, domain_
 
     pos_n = particles
     pos = particles.copy()
+    print(np.max(pos[:,0]), np.min(pos[:,0]))
+    print(np.max(pos[:,1]), np.min(pos[:,1]))
+    print(np.max(pos[:,2]), np.min(pos[:,2]))
+    print(np.max(pos[:,3]), np.min(pos[:,3]))
     pos[:,0] = pos[:,0]*domain_range['t'][1]
     pos[:,1] = pos[:,1]*domain_range['x'][1]
     pos[:,2] = pos[:,2]*domain_range['y'][1]

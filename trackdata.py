@@ -2,6 +2,8 @@
 import numpy as np
 from glob import glob
 import os
+from scipy.interpolate import PchipInterpolator
+
 class Database:
     @staticmethod
     def init_parmas(path, s_range, t_range, track_limit):
@@ -50,7 +52,8 @@ class Data(Database):
 
     @staticmethod
     def domain_filter(all_data_, data_keys, domain_range):
-        index = np.where((all_data_['pos'][:,1]>=domain_range['x'][0])&(all_data_['pos'][:,1]<=domain_range['x'][1])&
+        index = np.where((all_data_['pos'][:,0]>=domain_range['t'][0])&(all_data_['pos'][:,0]<=domain_range['t'][1])&
+                         (all_data_['pos'][:,1]>=domain_range['x'][0])&(all_data_['pos'][:,1]<=domain_range['x'][1])&
                          (all_data_['pos'][:,2]>=domain_range['y'][0])&(all_data_['pos'][:,2]<=domain_range['y'][1])&
                          (all_data_['pos'][:,3]>=domain_range['z'][0])&(all_data_['pos'][:,3]<=domain_range['z'][1]))
         all_data_ = {data_keys[i]:all_data_[data_keys[i]][index[0],:] for i in range(len(data_keys))}
@@ -101,34 +104,159 @@ class Data(Database):
         all_params["data"]["in_mean"] = np.array([[np.mean(train_data['pos'][:,0]), np.mean(train_data['pos'][:,1]), np.mean(train_data['pos'][:,2]), np.mean(train_data['pos'][:,3])]])
         all_params["data"]["in_std"] = np.array([[np.std(train_data['pos'][:,0]), np.std(train_data['pos'][:,1]), np.std(train_data['pos'][:,2]), np.std(train_data['pos'][:,3])]])
         return train_data, all_params
-    
+    @staticmethod
+    def weight_balance_coeff(all_params, train_data):
+        def get_profile(data, idx, c):
+            A_sort = data[idx]
+            cumsum = np.concatenate([[0],np.cumsum(c)])
+            A_profile = np.array([np.mean(np.abs(A_sort[cumsum[i]:cumsum[i+1]]))
+                                for i in range(len(c))])
+            return A_profile
+
+        def get_local_amplitude(z, interp):
+            z = np.asarray(z)
+            d = np.minimum(z, 1.0 - z)
+            return np.exp(interp(d))
+
+        def get_scale(z,interp,profile,target_ratio=10.0):
+            z = np.asarray(z)
+            local = get_local_amplitude(z,interp)
+            wall = 0.5*(profile[0]+profile[-1]) 
+            #Should be sampled from profile, otherwise original_ratio become inf
+
+            center = get_local_amplitude(0.5, interp)
+            original_ratio = center / wall
+
+            if original_ratio <= target_ratio:
+                print('no_scaling')
+                return np.ones_like(z)
+
+            gamma = (np.log(target_ratio)/ np.log(original_ratio))
+            beta = 1.0 - gamma
+            return (center / local)**beta
+
+        z = train_data['pos'][:, 3]
+
+        c, bins = np.histogram(z,bins=100,range=(0.0, 1.0))
+
+        bin_idx = (np.digitize(z, bins) - 1)
+        bin_idx = np.clip(bin_idx,0,len(c) - 1)
+        bin_idx_ = np.argsort(bin_idx)
+
+
+        comps = ['u', 'v', 'w']
+
+        profiles = {name: get_profile(train_data['vel'][:, i],bin_idx_,c)
+            for i, name in enumerate(comps)}
+
+        z_profile = get_profile(z, bin_idx_, c)
+
+
+        # Remove empty / invalid bins
+        valid = ((c > 0)& np.isfinite(z_profile))
+
+        for name in comps:
+            valid &= (np.isfinite(profiles[name])& (profiles[name] > 0))
+        z_profile = z_profile[valid]
+        for name in comps:
+            profiles[name] = profiles[name][valid]
+
+        # Full-domain interpolation
+        log_raw = {name: PchipInterpolator(z_profile, np.log(profiles[name]))
+                    for name in comps}
+
+        z_half = z_profile[z_profile <= 0.5]
+        log_half = {name: 0.5 * (log_raw[name](z_half) + log_raw[name](1.0 - z_half))
+                    for name in comps}
+
+        interps = {name: PchipInterpolator(z_half, log_half[name])
+                    for name in comps}
+        scale = [get_scale(z,interps[name],profiels[name],target_ratio=10.0) for name in comps]
+        train_data['scale'] = np.concatenate([scale],1)
+        return train_data, bin_idx_
+
+        
 
 if __name__ == "__main__":
     from domain import *
+    from pathlib import Path
+    import matplotlib.pyplot as plt
+    from jax import random
     all_params = {"data":{}, "domain":{}}
 
     cur_dir = os.getcwd()
     #path = '/RBC_G8_DNS/npdata/lv6_xbound/'
-    path = '/ETFS/HIT/train_data/lv1/'
-    data_keys = ['pos', 'vel', 'acc', 'p']
-    viscosity = 15*10**(-6)
+    path = '/RBC_G8_DNS/newdata/lv4_pc2/'
+    data_keys = ['pos', 'vel',]
+    viscosity = 2.64565e-3
 
-    domain_range = {'t':(0,0.04), 'x':(0,0.1), 'y':(0,0.1), 'z':(0,0.1)}
+    domain_range = {'t':(0,7.5), 'x':(0,8), 'y':(0,8), 'z':(0,1)}
     grid_size = [51, 200, 200, 200]
     bound_keys = ['ic', 'bcxu', 'bcxl', 'bcyu', 'bcyl', 'bczu', 'bczl']
-    u_ref = 1.5
-    v_ref = 1.5
-    w_ref = 0.9
-    p_ref = 1.5
+    u_ref = 0.26
+    v_ref = 0.26
+    w_ref = 0.4
+    p_ref = 0.26
+    T_ref = 0.5
     all_params["data"] = Data.init_params(path = path, 
                                           data_keys = data_keys, 
                                           viscosity = viscosity,
                                           u_ref = u_ref,
                                           v_ref = v_ref,
                                           w_ref = w_ref,
-                                          p_ref = p_ref)
+                                          p_ref = p_ref,
+                                          T_ref = T_ref)
     all_params["domain"] = Domain.init_params(domain_range = domain_range, 
                                               bound_keys = bound_keys,
                                               grid_size = grid_size)
     
     train_data, all_params = Data.train_data(all_params)
+    train_data, idx = Data.weight_balance_coeff(all_params, train_data)
+    global_key = random.PRNGKey(42)
+    key, batch_key = random.split(global_key)
+    num_keysplit = 10
+    keys = random.split(batch_key, num = num_keysplit)
+    keys_split = [random.split(keys[i], num = self.c.optimization_init_kwargs["n_steps"]) for i in range(num_keysplit)]
+    keys_iter = [iter(keys_split[i]) for i in range(num_keysplit)]
+    keys_next = [next(keys_iter[i]) for i in range(num_keysplit)]
+    N_p = train_data['pos'].shape[0]
+    perm_p = random.permutation(keys_next[0], N_p)
+    data_p = []
+    data_v = []
+    data_scale = []
+    for i in range(N_p//10000):
+        batch_p = train_data['pos'][perm_p[i*10000:(i+1)*10000],:]
+        batch_v = train_data['vel'][perm_p[i*10000:(i+1)*10000],:]
+        batch_scale = scale[perm_p[i*10000:(i+1)*10000],:]
+        data_p.append(batch_p)
+        data_v.append(batch_v)
+        data_scale.append(batch_scale)
+    data_p.append(train_data['pos'][perm_p[-1-10000:-1],:])
+    data_v.append(train_data['vel'][perm_p[-1-10000:-1],:])
+    data_scale.append(scale[perm_p[-1-10000:-1],:])
+    p_batches = itertools.cycle(data_p)
+    v_batches = itertools.cycle(data_v)
+    s_batches = itertools.cycle(data_scale)
+    p_batch = next(p_batches)
+    v_batch = next(v_batches)
+    s_batch = next(s_batches)
+
+    save_dir = Path("./RBC_vel_results")
+    fig, axes = plt.subplots(
+        1,
+        3,
+        figsize=(15, 4),
+        constrained_layout=True,
+    )
+    im0 = axes[0].plot(np.abs(s_batch[:,0]*v_batch[:,0])
+    )
+    im1 = axes[1].plot(np.abs(s_batch[:,1]*v_batch[:,1])
+    )
+    im2 = axes[2].plot(np.abs(s_batch[:,2]*v_batch[:,2])
+    )
+    fig.savefig(
+        save_dir /
+        f"profile.png",
+        dpi=300,
+        bbox_inches="tight",
+    )

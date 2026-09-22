@@ -350,16 +350,24 @@ def Tecplotfile_gen(c, path, name, all_params, all_params2, all_params3, domain_
     dynamic_params = all_params["network1"].pop("layers")
     dynamic_params2 = all_params2["network1"].pop("layers")
     # Create the evaluation grid
+    print(domain_range['x'][1])
     gridbase = [np.linspace(domain_range[key][0], domain_range[key][1], output_shape[i]) for i, key in enumerate(['t', 'x', 'y', 'z'])]
     print(gridbase)
     if all_params3['domain'].get('fine_boundary'):
         print('fine_boundary######################################')
         grids, all_params3 = c.domain.sampler(all_params3)
         gridbase = [grids['eqns']['t']*pos_ref[0], grids['eqns']['x']*pos_ref[1], grids['eqns']['y']*pos_ref[2], grids['eqns']['z']*pos_ref[3]]
-    
-    print(gridbase[0].shape, gridbase[-1].shape)
+     
+    #print(gridbase[0].shape, gridbase[-1].shape)
+    #gridbase_n = [gridbase[i].copy()/pos_ref[i] for i in range(len(gridbase))]
+    is_unst = 0
+    if is_unst:
+        ground_data = np.load(path+'ground/ts_'+str(timestep).zfill(2) + '.npy')
+        gridbase = [np.unique(ground_data[:,i]) for i in range(4)]
+        gridbase[3] = gridbase[3]
+    print(timestep)
+    print(gridbase[3])
     gridbase_n = [gridbase[i].copy()/pos_ref[i] for i in range(len(gridbase))]
-
     if order[0] == 0:
         if order[1] == 1:
             z_e, y_e, x_e = np.meshgrid(gridbase[-1], gridbase[-2], gridbase[-3], indexing='ij')
@@ -383,6 +391,8 @@ def Tecplotfile_gen(c, path, name, all_params, all_params2, all_params3, domain_
             x_n, y_n, z_n = np.meshgrid(gridbase_n[-3], gridbase_n[-2], gridbase_n[-1], indexing='ij')   
     t_e = np.zeros(x_e.shape) + gridbase[0][timestep]
     t_n = np.zeros(x_n.shape) + gridbase_n[0][timestep]
+    #t_e = np.zeros(x_e.shape) + gridbase[0]
+    #t_n = np.zeros(x_n.shape) + gridbase_n[0]
     eval_grid = np.concatenate([t_n.reshape(-1,1), x_n.reshape(-1,1), y_n.reshape(-1,1), z_n.reshape(-1,1)], axis=1)
     eval_grid_e = np.concatenate([t_e.reshape(-1,1), x_e.reshape(-1,1), y_e.reshape(-1,1), z_e.reshape(-1,1)], axis=1)
     print(np.max(eval_grid[:,0]), np.max(eval_grid[:,1]), np.max(eval_grid[:,2]), np.max(eval_grid[:,3]))
@@ -544,7 +554,7 @@ if __name__ == "__main__":
         all_params3['domain']['fine_boundary'] = fine_boundary
         all_params3['domain']['method'] = method
     except:
-        if all_params3['domain']['fine_boundary']:
+        if all_params3['domain'].get('fine_boundary'):
             all_params3['domain'].pop('fine_boundary')
         print('No fine boundary')
 
