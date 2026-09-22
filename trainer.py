@@ -44,11 +44,11 @@ class Model(struct.PyTreeNode):
         return self.forward(*args)
 
 @partial(jax.jit, static_argnums=(1, 2, 5, 10))
-def PINN_update(model_states, optimiser_fn, equation_fn, dynamic_params, static_params, static_keys, grids, particles, particle_vel, particle_bd, model_fn):
+def PINN_update(model_states, optimiser_fn, equation_fn, dynamic_params, static_params, static_keys, grids, particles, particle_vel, particle_scale, particle_bd, model_fn):
     static_leaves, treedef = static_keys
     leaves = [d if s is None else s for d, s in zip(static_params, static_leaves)]
     all_params = jax.tree_util.tree_unflatten(treedef, leaves)
-    lossval, grads = value_and_grad(equation_fn, argnums=0)(dynamic_params, all_params, grids, particles, particle_vel, particle_bd, model_fn)
+    lossval, grads = value_and_grad(equation_fn, argnums=0)(dynamic_params, all_params, grids, particles, particle_vel, particle_scale, particle_bd, model_fn)
     updates, model_states = optimiser_fn(grads, model_states, dynamic_params)
     dynamic_params = optax.apply_updates(dynamic_params, updates)
     return lossval, model_states, dynamic_params
@@ -88,6 +88,7 @@ class PINN(PINNbase):
         # Input data and grids
         grids, all_params = self.c.domain.sampler(all_params)
         train_data, all_params = self.c.data.train_data(all_params)
+        train_data, idx = self.c.data.weight_balance_coeff(all_params, train_data)
         if 'path_w' in all_params['data'].keys():
             print('wall data detected')
             wall_data = self.c.data.wall_data(all_params.copy())
@@ -113,18 +114,23 @@ class PINN(PINNbase):
         perm_p = random.permutation(keys_next[0], N_p)
         data_p = []
         data_v = []
+        data_s = []
         for i in range(N_p//self.c.optimization_init_kwargs["p_batch"]):
             batch_p = train_data['pos'][perm_p[i*self.c.optimization_init_kwargs["p_batch"]:(i+1)*self.c.optimization_init_kwargs["p_batch"]],:]
             batch_v = train_data['vel'][perm_p[i*self.c.optimization_init_kwargs["p_batch"]:(i+1)*self.c.optimization_init_kwargs["p_batch"]],:]
+            batch_s = train_data['scale'][perm_p[i*self.c.optimization_init_kwargs["p_batch"]:(i+1)*self.c.optimization_init_kwargs["p_batch"]],:]
             data_p.append(batch_p)
             data_v.append(batch_v)
+            data_s.append(batch_s)
         data_p.append(train_data['pos'][perm_p[-1-self.c.optimization_init_kwargs["p_batch"]:-1],:])
         data_v.append(train_data['vel'][perm_p[-1-self.c.optimization_init_kwargs["p_batch"]:-1],:])
+        data_s.append(train_data['scale'][perm_p[-1-self.c.optimization_init_kwargs["p_batch"]:-1],:])
         p_batches = itertools.cycle(data_p)
         v_batches = itertools.cycle(data_v)
+        s_batches = itertools.cycle(data_s)
         p_batch = next(p_batches)
         v_batch = next(v_batches)
-
+        s_batch = next(s_batches)
         g_batch = jnp.stack([random.choice(keys_next[k+1], 
                                            grids['eqns'][arg], 
                                            shape=(self.c.optimization_init_kwargs["p_batch"],)) 
@@ -140,7 +146,7 @@ class PINN(PINNbase):
         
         RAD_collocation_points = None
         # Initializing the update function
-        update = PINN_update.lower(model_states, optimiser_fn, equation1_fn, dynamic_params, static_params, static_keys, g_batch, p_batch, v_batch, b_batches, model_fn).compile()
+        update = PINN_update.lower(model_states, optimiser_fn, equation1_fn, dynamic_params, static_params, static_keys, g_batch, p_batch, v_batch, s_batch, b_batches, model_fn).compile()
 
             # Training loop
         RAD_check = 0
@@ -150,7 +156,7 @@ class PINN(PINNbase):
             keys_next = [next(keys_iter[i]) for i in range(num_keysplit)]
             p_batch = next(p_batches)
             v_batch = next(v_batches)
-            
+            s_batch = next(s_batches)
             #p_batch = random.choice(keys_next[0],train_data['pos'],shape=(self.c.optimization_init_kwargs["p_batch"],))
             #v_batch = random.choice(keys_next[0],train_data['vel'],shape=(self.c.optimization_init_kwargs["p_batch"],))
             if not RAD:
@@ -169,10 +175,10 @@ class PINN(PINNbase):
                                                 shape=(self.c.optimization_init_kwargs["b_batch"],)) 
                                     for k, arg in enumerate(list(all_params["domain"]["domain_range"].keys()))],axis=1)
                 b_batches.append(b_batch)
-            lossval, model_states, dynamic_params = update(model_states, dynamic_params, static_params, g_batch, p_batch, v_batch, b_batches)
+            lossval, model_states, dynamic_params = update(model_states, dynamic_params, static_params, g_batch, p_batch, v_batch, s_batch, b_batches)
             if all_params["domain"]["RAD_sampling"]:
                 if i%all_params['domain']['RAD_interval'] == 0:
-                    residual_score = residual_fn(dynamic_params, all_params, g_batch, p_batch, v_batch, b_batches, model_fn) 
+                    residual_score = residual_fn(dynamic_params, all_params, g_batch, p_batch, v_batch, s_batch, b_batches, model_fn) 
                     new_rad_points, prob = RAD_sampling(keys_next[-1], g_batch, residual_score, all_params["domain"]["RAD_num"], k = all_params["domain"]["k"], c = all_params["domain"]["c"])
                     if RAD_collocation_points is not None:
                         RAD_collocation_points = jnp.concatenate([RAD_collocation_points, new_rad_points],0)
@@ -188,7 +194,7 @@ class PINN(PINNbase):
                     else:
                         RAD_collocation_points = new_rad_points
             
-            self.report(i, report_fn, dynamic_params, all_params, p_batch, v_batch, g_batch, b_batches, valid_data, keys_iter[-1], self.c.optimization_init_kwargs["save_step"], model_fn)
+            self.report(i, report_fn, dynamic_params, all_params, p_batch, v_batch, s_batch, g_batch, b_batches, valid_data, keys_iter[-1], self.c.optimization_init_kwargs["save_step"], model_fn)
             self.save_model(i, dynamic_params, all_params, self.c.optimization_init_kwargs["save_step"], model_fn)
 
     def save_model(self, i, dynamic_params, all_params, save_step, model_fns):
@@ -201,7 +207,7 @@ class PINN(PINNbase):
                 pickle.dump(serialised_model,f)
         return
 
-    def report(self, i, report_fn, dynamic_params, all_params, p_batch, v_batch, g_batch, b_batch, valid_data, e_batch_key, save_step, model_fns, Tx_batch = None, Ty_batch = None):    
+    def report(self, i, report_fn, dynamic_params, all_params, p_batch, v_batch, s_batch, g_batch, b_batch, valid_data, e_batch_key, save_step, model_fns, Tx_batch = None, Ty_batch = None):    
         save_report = (i % save_step == 0)
         if save_report:
             all_params["network1"]["layers"] = dynamic_params
@@ -211,14 +217,14 @@ class PINN(PINNbase):
             if 'T' in valid_data.keys():
                 e_batch_T = random.choice(e_key, valid_data['T'], shape = (self.c.optimization_init_kwargs["e_batch"],))
                 if 'Tx' in valid_data.keys():
-                    Losses = report_fn(dynamic_params, all_params, g_batch, p_batch, v_batch, e_batch_pos, e_batch_vel, b_batch, model_fns, particle_Tx = Tx_batch, particle_Ty = Ty_batch, e_batch_T = e_batch_T)
+                    Losses = report_fn(dynamic_params, all_params, g_batch, p_batch, v_batch, s_batch, e_batch_pos, e_batch_vel, b_batch, model_fns, particle_Tx = Tx_batch, particle_Ty = Ty_batch, e_batch_T = e_batch_T)
                 else:
-                    Losses = report_fn(dynamic_params, all_params, g_batch, p_batch, v_batch, e_batch_pos, e_batch_vel, b_batch, model_fns, e_batch_T = e_batch_T)
+                    Losses = report_fn(dynamic_params, all_params, g_batch, p_batch, v_batch, s_batch, e_batch_pos, e_batch_vel, b_batch, model_fns, e_batch_T = e_batch_T)
             else:
                 if 'Tx' in valid_data.keys():
-                    Losses = report_fn(dynamic_params, all_params, g_batch, p_batch, v_batch, e_batch_pos, e_batch_vel, b_batch, model_fns, particle_Tx = Tx_batch, particle_Ty = Ty_batch)
+                    Losses = report_fn(dynamic_params, all_params, g_batch, p_batch, v_batch, s_batch, e_batch_pos, e_batch_vel, b_batch, model_fns, particle_Tx = Tx_batch, particle_Ty = Ty_batch)
                 else:
-                    Losses = report_fn(dynamic_params, all_params, g_batch, p_batch, v_batch, e_batch_pos, e_batch_vel, b_batch, model_fns)
+                    Losses = report_fn(dynamic_params, all_params, g_batch, p_batch, v_batch, s_batch, e_batch_pos, e_batch_vel, b_batch, model_fns)
 
             print(f"step_num : {i:<{12}} total_loss : {Losses[0]:<{12}.{5}} u_loss : {Losses[1]:<{12}.{5}} "
                     f"v_loss : {Losses[2]:<{12}.{5}} w_loss : {Losses[3]:<{12}.{5}} con_loss : {Losses[4]:<{12}.{5}} "

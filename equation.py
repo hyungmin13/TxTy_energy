@@ -27,7 +27,7 @@ class RBC_NS_case(Equation):
         self.all_params = all_params
     
     @staticmethod
-    def Loss(dynamic_params, all_params, g_batch, particles, particle_vel, boundaries, model_fns):
+    def Loss(dynamic_params, all_params, g_batch, particles, particle_vel, particle_scale, boundaries, model_fns):
         def first_order(all_params, g_batch, cotangent, model_fns):
             def u_t(batch):
                 return model_fns(all_params, batch)
@@ -165,13 +165,15 @@ class RBC_NS_case(Equation):
         loss_Tb6 = jnp.mean(Tb6**2)
         loss_wzb6 = jnp.mean(wzb6**2)
 
-        loss_u = all_params["data"]['u_ref']*p_out[:,0:1] - particle_vel[:,0:1]
+        d_wall = 1.0 - jnp.abs(particles[:,3:4])
+        
+        loss_u = (all_params["data"]['u_ref']*p_out[:,0:1] - particle_vel[:,0:1])*particle_scale[:,0:1]
         loss_u = jnp.mean(loss_u**2)
 
-        loss_v = all_params["data"]['v_ref']*p_out[:,1:2] - particle_vel[:,1:2]
+        loss_v = (all_params["data"]['v_ref']*p_out[:,1:2] - particle_vel[:,1:2])*particle_scale[:,1:2]
         loss_v = jnp.mean(loss_v**2)
 
-        loss_w = all_params["data"]['w_ref']*p_out[:,2:3] - particle_vel[:,2:3]
+        loss_w = (all_params["data"]['w_ref']*p_out[:,2:3] - particle_vel[:,2:3])*particle_scale[:,2:3]
         loss_w = jnp.mean(loss_w**2)
 
         loss_con = ux + vy + wz
@@ -190,7 +192,7 @@ class RBC_NS_case(Equation):
         return total_loss
     
     @staticmethod
-    def Loss_report(dynamic_params, all_params, g_batch, particles, particle_vel, e_batch, ev_batch, boundaries, model_fns, eT_batch=None):
+    def Loss_report(dynamic_params, all_params, g_batch, particles, particle_vel, particle_scale, e_batch, ev_batch, boundaries, model_fns, eT_batch=None):
         def first_order(all_params, g_batch, cotangent, model_fns):
             def u_t(batch):
                 return model_fns(all_params, batch)
@@ -324,13 +326,13 @@ class RBC_NS_case(Equation):
         loss_wb6 = jnp.mean(wb6**2)
         loss_Tb6 = jnp.mean(Tb6**2)
 
-        loss_u = all_params["data"]['u_ref']*p_out[:,0:1] - particle_vel[:,0:1]
+        loss_u = (all_params["data"]['u_ref']*p_out[:,0:1] - particle_vel[:,0:1])*particle_scale[:,0:1]
         loss_u = jnp.mean(loss_u**2)
 
-        loss_v = all_params["data"]['v_ref']*p_out[:,1:2] - particle_vel[:,1:2]
+        loss_v = (all_params["data"]['v_ref']*p_out[:,1:2] - particle_vel[:,1:2])*particle_scale[:,1:2]
         loss_v = jnp.mean(loss_v**2)
 
-        loss_w = all_params["data"]['w_ref']*p_out[:,2:3] - particle_vel[:,2:3]
+        loss_w = (all_params["data"]['w_ref']*p_out[:,2:3] - particle_vel[:,2:3])*particle_scale[:,2:3]
         loss_w = jnp.mean(loss_w**2)
 
         u_error = jnp.linalg.norm(e_out[:,0:1]*all_params["data"]['u_ref']-ev_batch[:,0:1])/jnp.linalg.norm(ev_batch[:,0:1])
@@ -358,7 +360,7 @@ class RBC_NS_case(Equation):
                     weights[6]*loss_NS3 + weights[7]*loss_ENR + weights[8]*(loss_Txb1 + loss_Txb2 + loss_Tyb3 + loss_Tyb4) + weights[9]*(loss_Tb5 + loss_Tb6) + weights[10]*(loss_ub1 + loss_ub2 + loss_ub3 + loss_ub4 + loss_ub5 + loss_ub6 + loss_vb1 + loss_vb2 + loss_vb3 + loss_vb4 + loss_vb5 + loss_vb6 + loss_wb1 + loss_wb2 + loss_wb3 + loss_wb4 + loss_wb5 + loss_wb6)
         return total_loss, loss_u, loss_v, loss_w, loss_con, loss_NS1, loss_NS2, loss_NS3, loss_ENR, loss_Tb5 + loss_Tb6, loss_Txb1 + loss_Txb2 + loss_Tyb3 + loss_Tyb4, u_bound + v_bound + w_bound, 0.0, u_error, v_error, w_error, T_error
 
-    def residual_score(dynamic_params, all_params, g_batch, particles, particle_vel, boundaries, model_fns):
+    def residual_score(dynamic_params, all_params, g_batch, particles, particle_vel, particle_scale, boundaries, model_fns):
         def first_order(all_params, g_batch, cotangent, model_fns):
             def u_t(batch):
                 return model_fns(all_params, batch)
